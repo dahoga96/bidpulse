@@ -33,7 +33,180 @@ const BOARDS = JSON.parse(await readFile("boards.config.json", "utf8"));
    `src` fetches that URL instead of the board page (for boards that render
    client-side but expose a JSON API). `parse` gets the raw body and returns
    metric fields; throw on bad data and the board is marked unparsed. */
+const hoursSince = (t) => (Date.now() - (typeof t === "number" ? t : Date.parse(t))) / 3_600_000;
+
 const OVERRIDES = {
+  // topapp.lol renders client-side; its Netlify function returns the full list.
+  "topapp.lol": {
+    src: "https://topapp.lol/.netlify/functions/apps",
+    parse: (body) => {
+      const apps = JSON.parse(body).apps;
+      if (!apps?.length) throw new Error("empty app list");
+      const top = apps.reduce((m, a) => (a.totalBidCents > m.totalBidCents ? a : m));
+      const lastMs = Math.max(...apps.map((a) => Date.parse(a.lastBidAt) || 0));
+      return { top: top.totalBidCents / 100, leader: top.name ?? null, clicks: top.clickCount ?? null, entry: null, last: lastMs ? hoursSince(lastMs) : null };
+    },
+  },
+  // coinup.lol bids in satoshis; report the USD value via the API's own BTC price.
+  "coinup.lol": {
+    src: "https://coinup.lol/api/board",
+    parse: (body) => {
+      const j = JSON.parse(body);
+      if (!j.board?.length) throw new Error("empty board");
+      const top = j.board.reduce((m, c) => (c.sats > m.sats ? c : m));
+      const lastMs = Math.max(...j.board.map((c) => c.lastAt || 0));
+      return {
+        top: Number(((top.sats * j.priceUsd) / 1e8).toFixed(2)),
+        leader: top.coin?.symbol || top.coin?.name || null,
+        clicks: top.clicks ?? null,
+        entry: null,
+        last: lastMs ? hoursSince(lastMs) : null,
+      };
+    },
+  },
+  // puremoney.lol renders client-side; /api/board has the rows.
+  "puremoney.lol": {
+    src: "https://puremoney.lol/api/board",
+    parse: (body) => {
+      const rows = JSON.parse(body).rows;
+      if (!rows?.length) throw new Error("empty board");
+      const top = rows.reduce((m, r) => (r.amount > m.amount ? r : m));
+      const lastMs = Math.max(...rows.map((r) => Date.parse(r.confirmedAt) || 0));
+      return { top: top.amount, leader: top.domain ?? null, clicks: top.clicks ?? null, entry: null, last: lastMs ? hoursSince(lastMs) : null };
+    },
+  },
+  // outbidme.lol's static HTML is a pre-hydration placeholder; the list is JSON.
+  "outbidme.lol": {
+    src: "https://outbidme.lol/api/leaderboard",
+    parse: (body) => {
+      const entries = JSON.parse(body).entries;
+      if (!entries?.length) throw new Error("empty board");
+      const top = entries.reduce((m, e) => (e.bid > m.bid ? e : m));
+      const toH = (s) => { const m = String(s || "").match(/^([\d.]+)\s*(m|h|d)$/i); return m ? +m[1] * { m: 1 / 60, h: 1, d: 24 }[m[2].toLowerCase()] : null; };
+      const times = entries.map((e) => toH(e.time)).filter((h) => h != null);
+      return { top: top.bid, leader: top.handle || top.name || null, clicks: top.visits != null ? +top.visits : null, entry: null, last: times.length ? Math.min(...times) : null };
+    },
+  },
+  // outoutbid.lol is a JS SPA; the directory runs its own board, served as JSON.
+  "outoutbid.lol": {
+    src: "https://outoutbid.lol/api/board",
+    parse: (body) => {
+      const entries = JSON.parse(body).board?.entries;
+      if (!entries?.length) throw new Error("empty board");
+      const top = entries.reduce((m, e) => (e.amountCents > m.amountCents ? e : m));
+      const lastMs = Math.max(...entries.map((e) => Date.parse(e.rankedAt) || 0));
+      return { top: top.amountCents / 100, leader: top.displayName ?? null, clicks: top.clicks ?? null, entry: null, last: lastMs ? hoursSince(lastMs) : null };
+    },
+  },
+  // outbids.lol / bidtop.lol are empty boards — their "$1" is the minimum-bid
+  // ask, not a bid. Suppress until someone actually bids.
+  "outbids.lol": {
+    src: "https://outbids.lol/api/leaderboard",
+    parse: (body) => {
+      const items = JSON.parse(body).items;
+      if (!items?.length) throw new Error("board is empty — no bids yet");
+      throw new Error("board has bids now — needs a parser");
+    },
+  },
+  "bidtop.lol": {
+    parse: (_h, text) => {
+      if (/No bids yet/i.test(text)) throw new Error("board is empty — no bids yet");
+      throw new Error("board changed — needs a parser");
+    },
+  },
+  // topseos.lol: "claim #1 for $41" is top+$1; the row is "… 183 clicks $40 View listing".
+  "topseos.lol": {
+    parse: (_h, text) => {
+      const m = text.match(/([\d,]+)\s*clicks\s*\$\s?([\d,]+(?:\.\d{1,2})?)\s*View listing/i);
+      if (!m) throw new Error("no #1 row");
+      const lead = text.match(/#\s?1\s+([a-z0-9-]+(?:\.[a-z0-9-]+)+)/i);
+      return { top: +m[2].replace(/,/g, ""), clicks: +m[1].replace(/,/g, ""), leader: lead?.[1] ?? null, entry: null, last: extractLastBidHours(text) };
+    },
+  },
+  // bidup.lol: the page's $29 sits inside the #1 listing's own sales copy; the
+  // row reads "holding #1 for · 18 clicks · 9 hours ago $6 steal #1 for $7".
+  "bidup.lol": {
+    parse: (_h, text) => {
+      const m = text.match(/holding #1[\s\S]{0,80}?([\d,]+)\s*click[\s\S]{0,60}?(\d+)\s*(minute|min|hour|hr|h|day|d)s?\s*ago\s*\$\s?([\d,]+(?:\.\d{1,2})?)\s*steal/i);
+      if (!m) throw new Error("no 'holding #1' row");
+      const U = { m: 1 / 60, h: 1, d: 24 };
+      return { top: +m[4].replace(/,/g, ""), clicks: +m[1].replace(/,/g, ""), leader: null, entry: null, last: +m[2] * U[m[3][0].toLowerCase()] };
+    },
+  },
+  // outbid.to: "Claim #1 for $9" is the increment ask; the row is "8h ago • 13 clicks • Details $8".
+  "outbid.to": {
+    parse: (_h, text) => {
+      const m = text.match(/(\d+)\s*(m|min|minute|h|hr|hour|d|day)s?\s*ago\s*•\s*([\d,]+)\s*clicks\s*•\s*Details\s*\$\s?([\d,]+(?:\.\d{1,2})?)/i);
+      if (!m) throw new Error("no #1 row");
+      const U = { m: 1 / 60, h: 1, d: 24 };
+      const lead = text.match(/\b1\s+([a-z0-9-]+(?:\.[a-z0-9-]+)*\.[a-z]{2,})\b/i);
+      return { top: +m[4].replace(/,/g, ""), clicks: +m[3].replace(/,/g, ""), leader: lead?.[1] ?? null, entry: null, last: +m[1] * U[m[2][0].toLowerCase()] };
+    },
+  },
+  // eu-outbid.lol bids in EUR — keep the number, mark the currency.
+  "eu-outbid.lol": {
+    parse: (_h, text) => {
+      const m = text.match(/([a-z0-9-]+(?:\.[a-z0-9-]+)+)\s*·\s*(\d+)\s*(minute|min|hour|hr|h|day|d)s?\s*ago\s*·\s*([\d,]+)\s*clicks\s*€\s?([\d,]+(?:\.\d{1,2})?)/i);
+      if (!m) throw new Error("no #1 row");
+      return { top: +m[5].replace(/,/g, ""), cur: "€", leader: m[1], clicks: +m[4].replace(/,/g, ""), entry: null, last: extractLastBidHours(text) };
+    },
+  },
+  // overbid.lol: "$1.25 claim" is the increment ask on every row; #1 shows "$1".
+  // No bid timestamps on the page (the "refreshed Xs ago" ticker is not a bid).
+  "overbid.lol": {
+    parse: (_h, text) => {
+      const m = text.match(/#\s?1\s+(@[A-Za-z0-9_]+)[\s\S]{0,140}?([\d,]+)\s*clicks[\s\S]{0,80}?\$\s?([\d,]+(?:\.\d{1,2})?)\s*claim this rank/i);
+      if (!m) throw new Error("no #1 row");
+      return { top: +m[3].replace(/,/g, ""), leader: m[1], clicks: +m[2].replace(/,/g, ""), entry: null, last: null };
+    },
+  },
+  // hotseat.fyi: "$10 at 2×" is a lock-price promo; the row ends "9 clicks … $5 #2".
+  "hotseat.fyi": {
+    parse: (_h, text) => {
+      const m = text.match(/(\d+)\s*(minute|min|hour|hr|h|day|d)s?\s*ago\s*([\d,]+)\s*clicks[^$€£]{0,50}\$\s?([\d,]+(?:\.\d{1,2})?)\s*#\s?2\b/i);
+      if (!m) throw new Error("no #1 row");
+      const U = { m: 1 / 60, h: 1, d: 24 };
+      const lead = text.match(/#\s?1\s+([a-z0-9-]+(?:\.[a-z0-9-]+)+)/i);
+      return { top: +m[4].replace(/,/g, ""), clicks: +m[3].replace(/,/g, ""), leader: lead?.[1] ?? null, entry: null, last: +m[1] * U[m[2][0].toLowerCase()] };
+    },
+  },
+  // bidboard.lol: "Claim #1 for $6" is top+$1; row: "16 hours ago · 5 clicks Visit ↗ $5 · Throne".
+  // Fresher rows are free listings, not bids, so last comes from this row.
+  "bidboard.lol": {
+    parse: (_h, text) => {
+      const m = text.match(/(\d+)\s*(minute|min|hour|hr|h|day|d)s?\s*ago\s*·\s*([\d,]+)\s*clicks[^$]{0,30}\$\s?([\d,]+(?:\.\d{1,2})?)\s*·\s*Throne/i);
+      if (!m) throw new Error("no Throne row");
+      const U = { m: 1 / 60, h: 1, d: 24 };
+      const lead = text.match(/#\s?1\s+([a-z0-9-]+(?:\.[a-z0-9-]+)+)/i);
+      return { top: +m[4].replace(/,/g, ""), clicks: +m[3].replace(/,/g, ""), leader: lead?.[1] ?? null, entry: null, last: +m[1] * U[m[2][0].toLowerCase()] };
+    },
+  },
+  // outbidception.lol: "dethrone — $6.01" is the beat-by-a-cent ask; the row is
+  // "· 8 clicks · house seed $6 dethrone".
+  "outbidception.lol": {
+    parse: (_h, text) => {
+      const m = text.match(/([\d,]+)\s*clicks\s*·[^$]{0,40}\$\s?([\d,]+(?:\.\d{1,2})?)\s*dethrone/i);
+      if (!m) throw new Error("no #1 row");
+      const lead = text.match(/#\s?1\s+(?:\S\s+)?([a-z0-9-]+(?:\.[a-z0-9-]+)+)/i);
+      return { top: +m[2].replace(/,/g, ""), clicks: +m[1].replace(/,/g, ""), leader: lead?.[1] ?? null, entry: null, last: extractLastBidHours(text) };
+    },
+  },
+  // srank.lol: "Take #1 at $17" is the claim price; each row shows its real "$X total".
+  "srank.lol": {
+    parse: (_h, text) => {
+      const m = text.match(/\$\s?([\d,]+(?:\.\d{1,2})?)\s*total\b/i);
+      if (!m) throw new Error("no '$X total' row");
+      return { top: +m[1].replace(/,/g, ""), leader: null, clicks: null, entry: null, last: extractLastBidHours(text) };
+    },
+  },
+  // bidwall.lol: "$2 takes #1" is the ask; the truth is in the row's aria-label.
+  "bidwall.lol": {
+    parse: (html) => {
+      const m = html.match(/aria-label="([^",]{1,60}), rank 1, paid \$([\d,]+(?:\.\d{1,2})?), ([\d,]+) clicks"/);
+      if (!m) throw new Error("no rank-1 aria-label");
+      return { top: +m[2].replace(/,/g, ""), leader: m[1], clicks: +m[3].replace(/,/g, ""), entry: null, last: null };
+    },
+  },
   // outbid.lol's headline figure is the "claim this rank" price (current top
   // + $5 increment). The real #1 bid is in the leaderboard rows, which pair a
   // bold name with an amount.
@@ -43,19 +216,18 @@ const OVERRIDES = {
         .map((m) => ({ name: m[1], amt: Number(m[2].replace(/,/g, "")), i: m.index }));
       if (rows.length < 2) throw new Error("no leaderboard rows");
       const top = rows.reduce((m, r) => (r.amt > m.amt ? r : m));
-      // clicks and last-bid must come from the #1 row itself — the page also
-      // has a "Trending right now" ticker in clicks/h that must not match
+      // clicks must come from the #1 row itself — the page also has a
+      // "Trending right now" ticker in clicks/h that must not match. last-bid
+      // comes from the board-wide "Latest activity" feed (via min-of-ago).
       const next = rows.filter((r) => r.i > top.i).sort((a, b) => a.i - b.i)[0];
       const row = strip(html.slice(top.i, next ? next.i : top.i + 4000));
       const clicks = row.match(/([\d,]+)\s*clicks\b(?!\s*\/)/i);
-      const ago = row.match(/(\d+)\s*(second|sec|s|minute|min|m|hour|hr|h|day|d)s?\s*ago\b/i);
-      const U = { s: 1 / 3600, m: 1 / 60, h: 1, d: 24 };
       return {
         top: top.amt,
         leader: top.name,
         entry: extractEntry(text),
         clicks: clicks ? Number(clicks[1].replace(/,/g, "")) : null,
-        last: ago ? Number(ago[1]) * U[ago[2][0].toLowerCase()] : null,
+        last: extractLastBidHours(text),
       };
     },
   },
@@ -139,19 +311,14 @@ const OVERRIDES = {
       };
     },
   },
-  // xbid.lol shows preset bid-amount chips ($5/$25/$100) that the generic pass
-  // mistakes for the top bid; the real figure is the explicit "#1 costs $X".
+  // xbid.lol: "#1 costs $26" is the claim ask; the real row is
+  // "top @handle $25.00 2h | 6 clk".
   "xbid.lol": {
-    parse: (_html, text) => {
-      const m = text.match(/#1 costs \$\s?([\d,]+(?:\.\d{1,2})?)/i);
-      if (!m) throw new Error("no '#1 costs' figure");
-      return {
-        top: Number(m[1].replace(/,/g, "")),
-        entry: null,
-        clicks: extractTopClicks(text),
-        last: extractLastBidHours(text),
-        leader: null,
-      };
+    parse: (_h, text) => {
+      const m = text.match(/top\s*@\s*([A-Za-z0-9_]+)\s*\$\s?([\d,]+(?:\.\d{1,2})?)\s*([\d.]+)\s*(m|h|d)\b\s*\|\s*([\d,]+)\s*clk/i);
+      if (!m) throw new Error("no top row");
+      const U = { m: 1 / 60, h: 1, d: 24 };
+      return { top: +m[2].replace(/,/g, ""), leader: "@" + m[1], clicks: +m[5].replace(/,/g, ""), entry: null, last: +m[3] * U[m[4].toLowerCase()] };
     },
   },
   // xme.lol renders its page with JavaScript, so the HTML has no figures —
@@ -234,15 +401,18 @@ function extractTopClicks(text) {
   return m ? Number(m[1].replace(/,/g, "")) : null;
 }
 
-/** "3 minutes ago" / "just now" / "1 hour ago" / "5h ago" / "2d ago" -> hours */
+/** Most recent bid on the board: MINIMUM of all "x ago" mentions in the page
+    head ("3 minutes ago" / "5h ago" / "just now"). Boards list rows oldest-bid-
+    first sometimes, so the first mention is not necessarily the newest. */
 function extractLastBidHours(text) {
-  const head = text.slice(0, 3000);
-  if (/\bjust now\b/i.test(head)) return 0;
-  const m = head.match(/\b(\d+)\s*(second|sec|s|minute|min|m|hour|hr|h|day|d)s?\s*ago\b/i);
-  if (!m) return null;
-  const n = Number(m[1]);
-  const u = m[2][0].toLowerCase();
-  return u === "s" ? n / 3600 : u === "m" ? n / 60 : u === "d" ? n * 24 : n;
+  const head = text.slice(0, 4000);
+  let best = /\bjust now\b/i.test(head) ? 0 : null;
+  const U = { s: 1 / 3600, m: 1 / 60, h: 1, d: 24 };
+  for (const m of head.matchAll(/\b(\d+)\s*(second|sec|s|minute|min|m|hour|hr|h|day|d)s?\s*ago\b/gi)) {
+    const v = Number(m[1]) * U[m[2][0].toLowerCase()];
+    if (best == null || v < best) best = v;
+  }
+  return best;
 }
 
 /** Cheapest listing on the board = entry price. */
@@ -337,6 +507,28 @@ async function main() {
 
   for (const r of results) {
     const h = (history[r.n] ||= []);
+
+    // sanity check: a figure that jumps implausibly between crawls is a
+    // mis-parse (marketing number, page redesign), not a bid — report nothing
+    // rather than a wrong number. Applies only while the last trusted reading
+    // is <1h old, so a genuine huge bid is delayed at most an hour instead of
+    // suppressed forever, and a redesign shows up in the warn log immediately.
+    const prev = [...h].reverse().find((p) => p.top != null);
+    if (r.ok && prev && now - prev.t < 3_600_000) {
+      const bad = [];
+      if (r.top != null && prev.top >= 5 && r.top > prev.top * 20)
+        bad.push(`top $${prev.top} -> $${r.top}`);
+      if (r.top != null && prev.top >= 20 && r.top < prev.top / 20)
+        bad.push(`top $${prev.top} -> $${r.top}`);
+      if (r.clicks != null && prev.clicks != null && r.top === prev.top && r.clicks < prev.clicks * 0.9)
+        bad.push(`clicks ${prev.clicks} -> ${r.clicks} with unchanged top`);
+      if (bad.length) {
+        r.ok = false;
+        r.error = "sanity check: " + bad.join("; ");
+        r.top = r.clicks = r.cpc = r.entry = r.leader = null;
+      }
+    }
+
     h.push({ t: now, top: r.top ?? null, clicks: r.clicks ?? null });
     // keep 48h at 15-min resolution
     history[r.n] = h.filter((p) => now - p.t < 48 * 3600 * 1000);

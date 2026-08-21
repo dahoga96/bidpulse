@@ -299,7 +299,7 @@ let live = 0, flat = 0;
 /* ---------- derive ---------- */
 const statusOf = h => h == null ? "flat" : h < 4 ? "live" : h < 12 ? "cooling" : "flat";
 const labelOf  = s => s==="live" ? "Taking bids" : s==="cooling" ? "Cooling" : "Flatlined";
-const money    = n => n >= 1000 ? "$"+n.toLocaleString("en-US") : "$"+n;
+const money    = (n,c) => (c||"$") + (n >= 1000 ? n.toLocaleString("en-US") : n);
 const ago      = h => h == null ? "—" : h < 1 ? Math.round(h*60)+"m" : h < 48 ? Math.round(h)+"h" : Math.round(h/24)+"d";
 const esc      = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 
@@ -333,7 +333,7 @@ function drawStrip(){
     ["Boards tracked", BOARDS.length, ""],
     ["Taking bids", live, ""],
     ["Flatlined", flat, "warn"],
-    ["Biggest #1 bid", big.top ? money(big.top) : "—", ""],
+    ["Biggest #1 bid", big.top ? money(big.top, big.cur) : "—", ""],
     ["Median $/click", "$"+med.toFixed(2), ""],
   ].map(([l,v,cls])=>`<div class="stat ${cls}"><span>${l}</span><b>${v}</b></div>`).join("");
 }
@@ -436,7 +436,7 @@ function render(){
         <a href="${esc(b.u)}" target="_blank" rel="noopener nofollow">${esc(b.n)}</a>${b.orig?'<span class="orig">Original</span>':''}
       </td>
       <td class="dim">${esc(b.c)}</td>
-      <td class="num">${b.top?money(b.top):"—"}</td>
+      <td class="num">${b.top?money(b.top,b.cur):"—"}</td>
       <td class="num dim">${b.clicks?b.clicks.toLocaleString("en-US"):"—"}</td>
       <td class="num cpc ${cpcCls}">${b.cpc===null?"—":"$"+b.cpc.toFixed(2)}</td>
       <td class="num dim">${ago(b.last)}</td>
