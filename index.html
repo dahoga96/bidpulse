@@ -153,7 +153,7 @@ footer{
   <h1>The live rate card for pay-to-rank boards.</h1>
   <p class="sub">
     Every pay-to-rank leaderboard publishes its bids and its click counts. We divide one by the other,
-    every 15 minutes: what a slot actually costs per click, and which boards stopped taking bids hours ago.
+    every 5 minutes: what a slot actually costs per click, and which boards stopped taking bids hours ago.
   </p>
 </header>
 
@@ -207,7 +207,7 @@ footer{
   <h2>Running a board? Get it tracked.</h2>
   <p>Listing is free and automatic — the index is worthless if it is incomplete. We read the page when you
     submit it; if we find live bid figures, it goes straight into the index and gets re-read every
-    15 minutes like everything else.</p>
+    5 minutes like everything else.</p>
   <form class="form" id="submitForm">
     <input name="url" type="url" required placeholder="https://yourboard.lol" aria-label="Board URL">
     <input name="cat" type="text" required placeholder="What does it rank? e.g. iOS apps" aria-label="What the board ranks">
@@ -507,7 +507,7 @@ async function boot(){
     SAMPLE = false;
     document.getElementById("updated").textContent =
       "Last read " + new Date(data.updatedAt).toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"}) +
-      " · every 15 min";
+      " · every 5 min";
   }catch(err){
     console.warn("[bidpulse] using sample data —", err.message);
     document.getElementById("updated").textContent = "Sample data · crawler not connected";
@@ -521,7 +521,7 @@ async function boot(){
 }
 
 boot();
-setInterval(boot, 15 * 60 * 1000);   // stay in sync with the cron
+setInterval(boot, 5 * 60 * 1000);    // stay in sync with the cron
 </script>
 </body>
 </html>

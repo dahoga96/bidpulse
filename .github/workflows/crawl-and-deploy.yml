@@ -1,6 +1,6 @@
 # Crawls every board, then publishes the site to Cloudflare Pages via wrangler
 # DIRECT UPLOAD. Deliberately not using Cloudflare's git integration: a deploy
-# every 15 minutes is ~2,900 builds/month, and Pages' build system is capped at
+# every 5 minutes is ~8,600 builds/month, and Pages' build system is capped at
 # 500/month on the free plan. Direct uploads don't count against that cap.
 #
 # Needs two repo secrets (Settings → Secrets and variables → Actions):
@@ -15,7 +15,7 @@ name: Crawl & deploy
 
 on:
   schedule:
-    - cron: "*/15 * * * *"
+    - cron: "*/5 * * * *"
   push:
     branches: [main]
   workflow_dispatch:

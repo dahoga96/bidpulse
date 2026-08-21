@@ -26,7 +26,7 @@ or the Live Server extension.
 
 ```
 boards.config.json      ← the list of tracked boards (data, not code)
-crawler.js              →  boards.json   ← the page fetches this on load and every 15 min
+crawler.js              →  boards.json   ← the page fetches this on load and every 5 min
                         →  history.json  ← 48h of bid deltas, feeds the pulse sparklines
 functions/api/submit.js ← Pages Function behind the "Add my board" form; validates
                            the page and commits accepted boards to boards.config.json
@@ -59,12 +59,13 @@ the operators pile on and you're done.
 
 ## Deploy
 
-Cloudflare Pages, via `.github/workflows/crawl-and-deploy.yml`. Every 15 minutes
+Cloudflare Pages, via `.github/workflows/crawl-and-deploy.yml`. Every 5 minutes
 (and on every push to main) the workflow crawls all boards and publishes
 `index.html + _headers + boards.json + history.json` with a wrangler **direct
-upload** — deliberately not Cloudflare's git integration, because 96 deploys a
-day is ~2,900 builds/month against Pages' 500/month free build cap. Direct
-uploads don't count against it.
+upload** — deliberately not Cloudflare's git integration, because 288 deploys a
+day is ~8,600 builds/month against Pages' 500/month free build cap. Direct
+uploads don't count against it. The repo is public so the workflow runs on
+GitHub's free unlimited minutes for public repos.
 
 One-time setup, in the GitHub repo under Settings → Secrets and variables → Actions:
 
@@ -91,7 +92,7 @@ Two things to know about the setup:
 
 ## Crawling manners
 
-One request per board per 15 minutes, 4 concurrent, 400ms apart, honest user-agent
+One request per board per 5 minutes, 4 concurrent, 400ms apart, honest user-agent
 with a contact URL. All public HTML, nothing behind a login. Keep it that way —
 you're publishing critical numbers about these people and the first counter-attack
 will be "they're hammering my server."

@@ -10,7 +10,7 @@
  * Nothing behind a login, no API keys, no accounts.
  *
  * Run:  node crawler.js  ->  writes boards.json
- * Cron: every 15 minutes. Serve boards.json statically; the page fetches it.
+ * Cron: every 5 minutes. Serve boards.json statically; the page fetches it.
  *
  * NOTE ON FRAGILITY: these are hand-built sites that change hourly. The generic
  * extractor below gets most of them. When it fails, add a targeted selector to
@@ -20,7 +20,7 @@
 
 import { writeFile, readFile } from "node:fs/promises";
 
-const UA = "BidpulseBot/1.0 (+https://bidpulse.pages.dev/bot) - reads public leaderboards, 1 req/board/15min";
+const UA = "BidpulseBot/1.0 (+https://bidpulse.pages.dev/bot) - reads public leaderboards, 1 req/board/5min";
 const TIMEOUT_MS = 12000;
 const CONCURRENCY = 4;          // be a good citizen
 const DELAY_MS = 400;
@@ -84,6 +84,21 @@ const OVERRIDES = {
   // nothing rather than that number until it grows a parseable leaderboard.
   "warmap.lol": {
     parse: () => { throw new Error("map game — no parseable leaderboard yet"); },
+  },
+  // uprank.lol's biggest figure is "$635 on the board" — the sum of every
+  // listing. The #1 row reads "Holding #1 <name> — … $66 Pay 207 Clicks".
+  "uprank.lol": {
+    parse: (_html, text) => {
+      const m = text.match(/Holding #1\s+(.{1,80}?)\s+—[\s\S]{0,400}?\$\s?([\d,]+(?:\.\d{1,2})?)\s*Pay\s*([\d,]+)\s*Clicks/i);
+      if (!m) throw new Error("no 'Holding #1' row");
+      return {
+        top: Number(m[2].replace(/,/g, "")),
+        leader: m[1],
+        clicks: Number(m[3].replace(/,/g, "")),
+        entry: null,
+        last: extractLastBidHours(text),
+      };
+    },
   },
   // xbid.lol shows preset bid-amount chips ($5/$25/$100) that the generic pass
   // mistakes for the top bid; the real figure is the explicit "#1 costs $X".
