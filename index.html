@@ -5,285 +5,166 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>BIDPULSE — which pay-to-rank boards still have a pulse</title>
 <meta name="description" content="Live rate card for every pay-to-rank leaderboard. Real cost per click, real bid activity, and which boards have flatlined.">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Azeret+Mono:wght@400;500;700&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet">
 <style>
 :root{
-  --ink:#0A1220;
-  --panel:#0F1D30;
-  --panel-2:#132540;
-  --line:#1D3454;
-  --line-soft:#16273F;
-  --dim:#6B87AD;
-  --text:#C3D7EF;
-  --white:#F1F7FF;
-  --amber:#FFB23F;
-  --cyan:#4FD6C8;
-  --rose:#E06B77;
-  --mono:'Azeret Mono',ui-monospace,monospace;
-  --disp:'Bricolage Grotesque',system-ui,sans-serif;
-  --body:'IBM Plex Sans',system-ui,sans-serif;
+  --bg:#ffffff;
+  --ink:#0b0b0b;
+  --ink-2:#52514e;
+  --muted:#898781;
+  --line:#e5e4df;
+  --line-strong:#c3c2b7;
+  --wash:#f7f7f5;
+  --blue:#2a78d6;        /* links + sparklines */
+  --good:#0ca30c;        /* status dot: taking bids */
+  --good-text:#006300;   /* cheap $/click */
+  --warn:#c98500;        /* status dot: cooling */
+  --bad:#d03b3b;         /* status dot: flatlined, expensive $/click */
+  --sans:system-ui,-apple-system,"Segoe UI",sans-serif;
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html{-webkit-text-size-adjust:100%}
-body{
-  background:var(--ink);
-  color:var(--text);
-  font-family:var(--body);
-  font-size:15px;
-  line-height:1.5;
-  /* faint instrument-grid, ties to the monitor metaphor */
-  background-image:
-    linear-gradient(var(--line-soft) 1px,transparent 1px),
-    linear-gradient(90deg,var(--line-soft) 1px,transparent 1px);
-  background-size:64px 64px;
-  background-position:-1px -1px;
-}
-a{color:inherit}
-.wrap{max-width:1180px;margin:0 auto;padding:0 20px}
+body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.5}
+a{color:var(--blue)}
+.wrap{max-width:1100px;margin:0 auto;padding:0 20px}
+.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
 
-/* ---------- status strip ---------- */
-.strip{
-  border-bottom:1px solid var(--line);
-  background:rgba(10,18,32,.9);
-  backdrop-filter:blur(6px);
-  position:sticky;top:0;z-index:20;
-}
-.strip-in{display:flex;gap:0;align-items:stretch;flex-wrap:wrap}
-.stat{
-  padding:10px 18px 9px;
-  border-right:1px solid var(--line);
-  font-family:var(--mono);
-  font-size:11px;
-  letter-spacing:.04em;
-  white-space:nowrap;
-}
-.stat b{display:block;color:var(--white);font-size:16px;font-weight:700;letter-spacing:-.01em;margin-top:2px}
-.stat span{color:var(--dim);text-transform:uppercase;font-size:10px;letter-spacing:.14em}
-.stat.warn b{color:var(--rose)}
-.stat.hot b{color:var(--amber)}
-.stat:first-child{border-left:1px solid var(--line)}
+/* ---------- header ---------- */
+.hero{padding:40px 0 8px}
+h1{font-size:clamp(24px,4vw,34px);font-weight:700;letter-spacing:-.02em;line-height:1.15;max-width:26ch}
+.sub{margin-top:10px;max-width:62ch;color:var(--ink-2);font-size:15.5px}
 
-/* ---------- hero ---------- */
-.hero{padding:52px 0 28px;position:relative}
-.eyebrow{
-  font-family:var(--mono);font-size:10.5px;letter-spacing:.22em;
-  text-transform:uppercase;color:var(--cyan);margin-bottom:18px;
-  display:flex;align-items:center;gap:9px;
-}
-.blip{width:7px;height:7px;border-radius:50%;background:var(--cyan);box-shadow:0 0 0 0 rgba(79,214,200,.7);animation:blip 2.2s infinite}
-@keyframes blip{
-  0%{box-shadow:0 0 0 0 rgba(79,214,200,.55)}
-  70%{box-shadow:0 0 0 9px rgba(79,214,200,0)}
-  100%{box-shadow:0 0 0 0 rgba(79,214,200,0)}
-}
-h1{
-  font-family:var(--disp);
-  font-weight:800;
-  font-size:clamp(34px,6.4vw,68px);
-  line-height:.98;
-  letter-spacing:-.035em;
-  color:var(--white);
-  max-width:15ch;
-}
-h1 em{font-style:normal;color:var(--amber)}
-.sub{
-  margin-top:20px;max-width:56ch;color:var(--dim);font-size:16.5px;line-height:1.55;
-}
-.sub strong{color:var(--text);font-weight:500}
+/* ---------- stats row ---------- */
+.strip-in{display:flex;flex-wrap:wrap;gap:8px 40px;padding:22px 0 18px;border-bottom:1px solid var(--line)}
+.stat span{display:block;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.stat b{font-size:19px;font-weight:650;font-variant-numeric:tabular-nums}
+.stat.warn b{color:var(--bad)}
 
-/* ---------- signature: the market ECG ---------- */
-.ecg{
-  margin:34px 0 0;
-  border:1px solid var(--line);
-  background:linear-gradient(180deg,var(--panel) 0%,rgba(15,29,48,.35) 100%);
-  position:relative;
-  overflow:hidden;
-}
-.ecg-head{
-  display:flex;justify-content:space-between;align-items:baseline;
-  padding:11px 16px;border-bottom:1px solid var(--line-soft);
-  font-family:var(--mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim);
-}
-.ecg-head b{color:var(--amber);font-weight:500;letter-spacing:.1em}
-.ecg svg{display:block;width:100%;height:132px}
-.trace{fill:none;stroke:var(--amber);stroke-width:1.6;stroke-linejoin:round;stroke-linecap:round}
-.trace-ghost{fill:none;stroke:var(--amber);stroke-width:6;opacity:.13;filter:blur(3px)}
-.baseline{stroke:var(--line);stroke-width:1;stroke-dasharray:2 6}
-.sweep{
-  position:absolute;top:37px;bottom:0;width:120px;
-  background:linear-gradient(90deg,rgba(10,18,32,0),rgba(10,18,32,.92));
-  animation:sweep 7s linear infinite;
-}
-@keyframes sweep{from{left:-120px}to{left:100%}}
-.ecg-foot{
-  padding:9px 16px;border-top:1px solid var(--line-soft);
-  font-family:var(--mono);font-size:10.5px;color:var(--dim);letter-spacing:.03em;
-}
+/* ---------- 48h activity chart ---------- */
+.ecg{margin:22px 0 0}
+.ecg-head{display:flex;justify-content:space-between;align-items:baseline;font-size:12px;color:var(--muted);margin-bottom:6px}
+.ecg-head b{font-weight:500;color:var(--ink-2)}
+.ecg svg{display:block;width:100%;height:64px}
+.trace{fill:none;stroke:var(--blue);stroke-width:1.5;stroke-linejoin:round;stroke-linecap:round}
+.baseline{stroke:var(--line-strong);stroke-width:1}
+.ecg-foot{font-size:12.5px;color:var(--ink-2);margin-top:6px}
 
-/* ---------- sponsor slot ---------- */
-.sponsor{
-  margin:30px 0 0;border:1px solid var(--amber);
-  background:rgba(255,178,63,.05);
-  display:flex;flex-wrap:wrap;align-items:center;gap:16px;padding:14px 16px;
+.sample{
+  margin-top:20px;border:1px solid var(--bad);border-left-width:4px;
+  padding:10px 14px;font-size:13px;color:var(--bad);background:#fff;
 }
-.sponsor .tag{
-  font-family:var(--mono);font-size:9.5px;letter-spacing:.18em;text-transform:uppercase;
-  color:var(--ink);background:var(--amber);padding:4px 8px;font-weight:700;
-}
-.sponsor .body{flex:1 1 300px;min-width:0}
-.sponsor .body b{color:var(--white);font-family:var(--disp);font-weight:600;font-size:16px;letter-spacing:-.01em}
-.sponsor .body p{color:var(--dim);font-size:13.5px;margin-top:1px}
-.btn{
-  font-family:var(--mono);font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;
-  background:var(--amber);color:var(--ink);border:0;padding:11px 16px;cursor:pointer;font-weight:700;
-  text-decoration:none;display:inline-block;transition:transform .12s ease,filter .12s ease;
-}
-.btn:hover{filter:brightness(1.1)}
-.btn:active{transform:translateY(1px)}
-.btn-ghost{background:transparent;color:var(--text);border:1px solid var(--line)}
-.btn-ghost:hover{border-color:var(--cyan);color:var(--white);filter:none}
 
 /* ---------- controls ---------- */
-.controls{
-  margin:42px 0 0;display:flex;flex-wrap:wrap;gap:10px;align-items:center;
-  padding-bottom:14px;border-bottom:1px solid var(--line);
-}
+.controls{margin:34px 0 0;display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding-bottom:12px}
 .chip{
-  font-family:var(--mono);font-size:10.5px;letter-spacing:.11em;text-transform:uppercase;
-  background:transparent;color:var(--dim);border:1px solid var(--line);
-  padding:7px 12px;cursor:pointer;transition:.14s;
+  font-family:inherit;font-size:13px;background:#fff;color:var(--ink-2);
+  border:1px solid var(--line-strong);border-radius:6px;padding:6px 12px;cursor:pointer;
 }
-.chip:hover{color:var(--text);border-color:var(--dim)}
-.chip[aria-pressed="true"]{background:var(--panel-2);color:var(--white);border-color:var(--cyan)}
+.chip:hover{border-color:var(--ink-2);color:var(--ink)}
+.chip[aria-pressed="true"]{background:var(--ink);color:#fff;border-color:var(--ink)}
 .search{
-  flex:1 1 190px;min-width:150px;margin-left:auto;
-  background:var(--panel);border:1px solid var(--line);color:var(--white);
-  font-family:var(--mono);font-size:12px;padding:8px 12px;
+  flex:1 1 200px;min-width:150px;margin-left:auto;
+  font-family:inherit;font-size:13.5px;color:var(--ink);
+  background:#fff;border:1px solid var(--line-strong);border-radius:6px;padding:7px 11px;
 }
-.search::placeholder{color:var(--dim)}
-.search:focus{outline:2px solid var(--cyan);outline-offset:-1px}
+.search::placeholder{color:var(--muted)}
 
 /* ---------- table ---------- */
-.tablewrap{overflow-x:auto;margin-top:0}
-table{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:12.5px;min-width:860px}
+.tablewrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13.5px;min-width:840px}
 thead th{
-  text-align:left;font-weight:500;font-size:9.5px;letter-spacing:.15em;text-transform:uppercase;
-  color:var(--dim);padding:14px 12px;border-bottom:1px solid var(--line);
-  cursor:pointer;user-select:none;white-space:nowrap;background:var(--ink);
-  position:sticky;top:46px;z-index:5;
+  text-align:left;font-weight:500;font-size:11px;letter-spacing:.07em;text-transform:uppercase;
+  color:var(--muted);padding:10px 10px;border-bottom:1px solid var(--line-strong);
+  cursor:pointer;user-select:none;white-space:nowrap;background:var(--bg);
+  position:sticky;top:0;z-index:5;
 }
-thead th:hover{color:var(--cyan)}
-thead th .car{opacity:.35;margin-left:5px}
-thead th[data-active] .car{opacity:1;color:var(--amber)}
-tbody tr{border-bottom:1px solid var(--line-soft);transition:background .12s}
-tbody tr:hover{background:var(--panel)}
-td{padding:13px 12px;vertical-align:middle}
-.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
-.board{min-width:230px}
-.board a{
-  font-family:var(--disp);font-weight:600;font-size:15px;color:var(--white);
-  text-decoration:none;letter-spacing:-.01em;
-}
-.board a:hover{color:var(--amber);text-decoration:underline;text-underline-offset:3px}
-.board p{font-family:var(--body);font-size:12.5px;color:var(--dim);margin-top:2px;line-height:1.35}
-.cpc{color:var(--white);font-weight:700}
-.cpc.good{color:var(--cyan)}
-.cpc.bad{color:var(--rose)}
+thead th:hover{color:var(--ink)}
+thead th .car{opacity:.4;margin-left:4px}
+thead th[data-active]{color:var(--ink)}
+thead th[data-active] .car{opacity:1}
+tbody tr{border-bottom:1px solid var(--line)}
+tbody tr:hover{background:var(--wash)}
+td{padding:11px 10px;vertical-align:middle}
+.board{min-width:220px}
+.board a{font-weight:600;font-size:14.5px;color:var(--ink);text-decoration:none}
+.board a:hover{text-decoration:underline;text-underline-offset:3px}
+.board p{font-size:12.5px;color:var(--muted);margin-top:1px;line-height:1.35}
+.dim{color:var(--ink-2)}
+.cpc{font-weight:650}
+.cpc.bad{color:var(--bad)}
 .orig{
-  font-family:var(--mono);font-size:8.5px;letter-spacing:.12em;color:var(--amber);
-  border:1px solid rgba(255,178,63,.4);padding:1px 5px;margin-left:7px;vertical-align:2px;
+  font-size:10px;letter-spacing:.05em;color:var(--ink-2);
+  border:1px solid var(--line-strong);border-radius:4px;padding:1px 5px;margin-left:7px;vertical-align:1px;
 }
-.status{font-size:10px;letter-spacing:.13em;text-transform:uppercase;white-space:nowrap}
-.status::before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;margin-right:7px;vertical-align:1px}
-.s-live{color:var(--cyan)}      .s-live::before{background:var(--cyan)}
-.s-cooling{color:var(--amber)}  .s-cooling::before{background:var(--amber)}
-.s-flat{color:var(--rose)}      .s-flat::before{background:var(--rose)}
+.status{font-size:12.5px;white-space:nowrap;color:var(--ink)}
+.status::before{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:7px;vertical-align:0}
+.s-live::before{background:var(--good)}
+.s-cooling::before{background:var(--warn)}
+.s-flat::before{background:var(--bad)}
 .spark{width:88px;height:26px;display:block}
-.spark path{fill:none;stroke-width:1.4;stroke-linejoin:round}
+.spark path{fill:none;stroke:var(--blue);stroke-width:1.4;stroke-linejoin:round}
 
 /* ---------- submit ---------- */
-.submit{
-  margin:56px 0 0;border:1px solid var(--line);background:var(--panel);padding:26px 22px;
-}
-.submit h2{font-family:var(--disp);font-weight:600;font-size:22px;color:var(--white);letter-spacing:-.02em}
-.submit p{color:var(--dim);font-size:14px;margin-top:6px;max-width:52ch}
-.form{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}
+.submit{margin:52px 0 0;border:1px solid var(--line);border-radius:8px;padding:24px 22px;background:var(--wash)}
+.submit h2{font-size:19px;font-weight:650;letter-spacing:-.01em}
+.submit p{color:var(--ink-2);font-size:14px;margin-top:6px;max-width:56ch}
+.form{display:flex;flex-wrap:wrap;gap:10px;margin-top:16px}
 .form input{
-  flex:1 1 220px;background:var(--ink);border:1px solid var(--line);color:var(--white);
-  font-family:var(--mono);font-size:12.5px;padding:11px 13px;
+  flex:1 1 220px;font-family:inherit;font-size:13.5px;color:var(--ink);
+  background:#fff;border:1px solid var(--line-strong);border-radius:6px;padding:9px 12px;
 }
-.form input:focus{outline:2px solid var(--cyan);outline-offset:-1px}
-.note{font-family:var(--mono);font-size:11px;color:var(--dim);margin-top:12px}
-.note.ok{color:var(--cyan)}
+.btn{
+  font-family:inherit;font-size:13.5px;font-weight:600;
+  background:var(--ink);color:#fff;border:1px solid var(--ink);border-radius:6px;
+  padding:9px 16px;cursor:pointer;text-decoration:none;display:inline-block;
+}
+.btn:hover{background:#333;border-color:#333}
+.note{font-size:12.5px;color:var(--muted);margin-top:12px}
+.note.ok{color:var(--good-text)}
 
 /* ---------- method + footer ---------- */
-.method{margin:52px 0 0;display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:1px;background:var(--line);border:1px solid var(--line)}
-.method div{background:var(--ink);padding:20px 18px}
-.method h3{font-family:var(--mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--cyan);margin-bottom:9px;font-weight:500}
-.method p{font-size:13.5px;color:var(--dim);line-height:1.55}
-footer{margin:44px 0 60px;padding-top:20px;border-top:1px solid var(--line);font-family:var(--mono);font-size:11px;color:var(--dim);display:flex;flex-wrap:wrap;gap:14px;justify-content:space-between}
-.sample{
-  margin-top:22px;border:1px solid var(--rose);background:rgba(224,107,119,.07);
-  padding:11px 14px;font-family:var(--mono);font-size:11px;color:var(--rose);letter-spacing:.03em;
+.method{margin:48px 0 0;display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:26px 34px}
+.method h3{font-size:12px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink);margin-bottom:6px;font-weight:600}
+.method p{font-size:13.5px;color:var(--ink-2);line-height:1.55}
+footer{
+  margin:44px 0 56px;padding-top:16px;border-top:1px solid var(--line);
+  font-size:12.5px;color:var(--muted);display:flex;flex-wrap:wrap;gap:12px;justify-content:space-between;
 }
 @media (max-width:640px){
-  .hero{padding:36px 0 20px}
-  .stat{padding:8px 13px}
-  .ecg svg{height:100px}
+  .hero{padding:28px 0 6px}
+  .strip-in{gap:8px 24px}
 }
-@media (prefers-reduced-motion:reduce){
-  .sweep,.blip{animation:none}
-  .sweep{display:none}
-}
-:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 </style>
 </head>
 <body>
 
-<!-- ============ STATUS STRIP ============ -->
-<div class="strip">
-  <div class="wrap"><div class="strip-in" id="strip"></div></div>
-</div>
-
 <div class="wrap">
 
-<!-- ============ HERO ============ -->
+<!-- ============ HEADER ============ -->
 <header class="hero">
-  <div class="eyebrow"><span class="blip"></span> Live rate card · pay-to-rank market</div>
-  <h1>Most of these boards are already <em>dead</em>.</h1>
+  <h1>The live rate card for pay-to-rank boards.</h1>
   <p class="sub">
-    Every pay-to-rank leaderboard publishes its bids and its click counts. Nobody divides one by the other.
-    We do, every 15 minutes. <strong>Find out what a slot actually costs per click — and which boards
-    stopped taking bids hours ago.</strong>
+    Every pay-to-rank leaderboard publishes its bids and its click counts. We divide one by the other,
+    every 15 minutes: what a slot actually costs per click, and which boards stopped taking bids hours ago.
   </p>
-
-  <!-- SIGNATURE: aggregate bid activity as a vitals trace -->
-  <div class="ecg">
-    <div class="ecg-head">
-      <span>Aggregate bid activity · 48h</span>
-      <b id="ecgReading">—</b>
-    </div>
-    <svg id="ecgSvg" viewBox="0 0 1000 132" preserveAspectRatio="none" aria-label="Aggregate bid activity across all tracked boards over the last 48 hours"></svg>
-    <div class="sweep" aria-hidden="true"></div>
-    <div class="ecg-foot" id="ecgFoot">—</div>
-  </div>
-
-  <!-- the only ad on the page, priced by the same rules it reports on -->
-  <div class="sponsor">
-    <span class="tag">Slot #1</span>
-    <div class="body">
-      <b id="spName">This is the only ad on this page.</b>
-      <p id="spDesc">Rank is the bid — same rules as every board below. Current price to take it: <b id="spPrice">$1</b>.</p>
-    </div>
-    <a class="btn" href="#claim">Take slot #1</a>
-  </div>
-
-  <div class="sample" id="sampleBanner">
-    Sample data. Figures below are placeholders until the crawler is pointed at production — see crawler.js.
-  </div>
 </header>
+
+<!-- ============ STATS ============ -->
+<div class="strip-in" id="strip"></div>
+
+<!-- 48h aggregate bid activity -->
+<div class="ecg">
+  <div class="ecg-head">
+    <span>Bid activity across all boards · last 48h</span>
+    <b id="ecgReading">—</b>
+  </div>
+  <svg id="ecgSvg" viewBox="0 0 1000 64" preserveAspectRatio="none" aria-label="Aggregate bid activity across all tracked boards over the last 48 hours"></svg>
+  <div class="ecg-foot" id="ecgFoot">—</div>
+</div>
+
+<div class="sample" id="sampleBanner">
+  Sample data. Figures below are placeholders until the crawler is pointed at production — see crawler.js.
+</div>
 
 <!-- ============ CONTROLS ============ -->
 <div class="controls">
@@ -346,7 +227,7 @@ footer{margin:44px 0 60px;padding-top:20px;border-top:1px solid var(--line);font
   <div>
     <h3>Corrections</h3>
     <p>Operators can dispute any figure and we will re-read the page and publish the correction. We do not
-      take money to change a number, and the sponsor slot is labelled.</p>
+      take money to change a number.</p>
   </div>
 </section>
 
@@ -362,7 +243,6 @@ footer{margin:44px 0 60px;padding-top:20px;border-top:1px solid var(--line);font
    DATA
    Board names and categories are real (as of 21 Aug 2026).
    All metrics are PLACEHOLDER until crawler.js populates them.
-   Swap this array for `await fetch('/api/boards')` in production.
    ============================================================ */
 let SAMPLE = true;   // flipped to false automatically once boards.json loads
 
@@ -400,8 +280,6 @@ const FALLBACK = [
   {n:"undbid.com",     u:"https://undbid.com",       c:"Reverse bidding",     top:6,   entry:1, clicks:16,  last:33.5},
 ];
 
-const SPONSOR = { name:"This is the only ad on this page.", desc:null, price:1, url:"#claim" };
-
 let BOARDS = FALLBACK;
 let live = 0, flat = 0;
 
@@ -433,69 +311,55 @@ function derive(){
   flat = BOARDS.filter(b=>b.s==="flat").length;
 }
 
-/* ---------- status strip ---------- */
+/* ---------- stats ---------- */
 function drawStrip(){
   const pot  = BOARDS.reduce((s,b)=>s+b.top,0);
   const cpcs = BOARDS.filter(b=>b.cpc).map(b=>b.cpc).sort((a,b)=>a-b);
   const med  = cpcs.length ? cpcs[Math.floor(cpcs.length/2)] : 0;
   document.getElementById("strip").innerHTML = [
     ["Boards tracked", BOARDS.length, ""],
-    ["Taking bids", live, "hot"],
+    ["Taking bids", live, ""],
     ["Flatlined", flat, "warn"],
     ["Sitting at #1", money(pot), ""],
     ["Median $/click", "$"+med.toFixed(2), ""],
   ].map(([l,v,cls])=>`<div class="stat ${cls}"><span>${l}</span><b>${v}</b></div>`).join("");
 }
 
-/* ---------- the ECG ---------- */
+/* ---------- 48h activity ---------- */
 function drawECG(){
-  const W=1000,H=132,pad=10;
-  // aggregate activity: sum of all board series
-  const agg = Array.from({length:24},(_,i)=>BOARDS.reduce((s,b)=>s+b.series[i],0));
-  const max = Math.max(...agg);
-  // upsample into a jagged instrument trace
-  const pts=[];
-  for(let i=0;i<agg.length;i++){
-    const v=agg[i]/max;
-    const x=pad + (W-pad*2)*(i/(agg.length-1));
-    const y=H-pad - v*(H-pad*2)*0.86;
-    pts.push([x,y]);
-    if(i<agg.length-1){
-      const nx=pad+(W-pad*2)*((i+0.5)/(agg.length-1));
-      const jitter=(Math.sin(i*3.1)*0.5+0.5)*v*22;
-      pts.push([nx, y+jitter-9]);
-    }
-  }
-  const d = pts.map((p,i)=>(i?"L":"M")+p[0].toFixed(1)+","+p[1].toFixed(1)).join(" ");
+  const W=1000,H=64,pad=4;
+  // aggregate activity: sum of all board series, one point per real bucket
+  const agg = Array.from({length:24},(_,i)=>BOARDS.reduce((s,b)=>s+(b.series[i]??0),0));
+  const max = Math.max(...agg, 0.01);
+  const d = agg.map((v,i)=>{
+    const x = pad + (W-pad*2)*(i/(agg.length-1));
+    const y = H-pad - (v/max)*(H-pad*2);
+    return (i?"L":"M")+x.toFixed(1)+","+y.toFixed(1);
+  }).join(" ");
   document.getElementById("ecgSvg").innerHTML =
     `<line class="baseline" x1="0" y1="${H-pad}" x2="${W}" y2="${H-pad}"/>
-     <path class="trace-ghost" d="${d}"/>
      <path class="trace" d="${d}"/>`;
-  document.getElementById("ecgReading").textContent = live + " of " + BOARDS.length + " responding";
+  document.getElementById("ecgReading").textContent = live + " of " + BOARDS.length + " taking bids";
   document.getElementById("ecgFoot").textContent =
     `${flat} boards have taken no bid in 12 hours. A slot on those delivers nothing at any price.`;
 }
 
-/* ---------- sponsor ---------- */
-document.getElementById("spName").textContent = SPONSOR.name;
-document.getElementById("spPrice").textContent = money(SPONSOR.price + 1);
-if(SPONSOR.desc) document.getElementById("spDesc").textContent = SPONSOR.desc;
-
-/* ---------- sparkline ---------- */
+/* ---------- sparkline ----------
+   One hue for all rows: the line shows activity, the Status column carries
+   state. Flatlined boards get a dashed flatline so the shape is unmistakable. */
 function spark(b){
   const W=88,H=26,max=Math.max(...b.series,0.01);
+  if(b.s==="flat"){
+    return `<svg class="spark" viewBox="0 0 ${W} ${H}" aria-hidden="true">
+      <line x1="0" y1="${H-3}" x2="${W}" y2="${H-3}" stroke="var(--line-strong)" stroke-width="1.4" stroke-dasharray="3 4"/>
+    </svg>`;
+  }
   const d=b.series.map((v,i)=>{
     const x=(W/(b.series.length-1))*i;
     const y=H-2-(v/max)*(H-5);
     return (i?"L":"M")+x.toFixed(1)+","+y.toFixed(1);
   }).join(" ");
-  const col = b.s==="live"?"var(--cyan)":b.s==="cooling"?"var(--amber)":"var(--rose)";
-  const flatline = b.s==="flat"
-    ? `<line x1="0" y1="${H-3}" x2="${W}" y2="${H-3}" stroke="${col}" stroke-width="1.2" opacity=".55"/>`
-    : "";
-  return `<svg class="spark" viewBox="0 0 ${W} ${H}" aria-hidden="true">
-    ${b.s==="flat"?flatline:`<path d="${d}" stroke="${col}"/>`}
-  </svg>`;
+  return `<svg class="spark" viewBox="0 0 ${W} ${H}" aria-hidden="true"><path d="${d}"/></svg>`;
 }
 
 /* ---------- render ---------- */
@@ -514,21 +378,21 @@ function render(){
     });
 
   document.getElementById("rows").innerHTML = rows.length ? rows.map(b=>{
-    const cpcCls = b.cpc===null ? "" : b.cpc < 0.5 ? "good" : b.cpc > 2 ? "bad" : "";
+    const cpcCls = b.cpc!==null && b.cpc > 2 ? "bad" : "";
     return `<tr>
       <td class="board">
         <a href="${b.u}" target="_blank" rel="noopener nofollow">${b.n}</a>${b.orig?'<span class="orig">Original</span>':''}
       </td>
-      <td style="color:var(--dim)">${b.c}</td>
+      <td class="dim">${b.c}</td>
       <td class="num">${b.top?money(b.top):"—"}</td>
-      <td class="num" style="color:var(--dim)">${money(b.entry)}</td>
-      <td class="num" style="color:var(--dim)">${b.clicks?b.clicks.toLocaleString("en-US"):"—"}</td>
+      <td class="num dim">${money(b.entry)}</td>
+      <td class="num dim">${b.clicks?b.clicks.toLocaleString("en-US"):"—"}</td>
       <td class="num cpc ${cpcCls}">${b.cpc===null?"—":"$"+b.cpc.toFixed(2)}</td>
-      <td class="num" style="color:var(--dim)">${ago(b.last)}</td>
+      <td class="num dim">${ago(b.last)}</td>
       <td>${spark(b)}</td>
-      <td><span class="status s-${b.s==="flat"?"flat":b.s}">${labelOf(b.s)}</span></td>
+      <td><span class="status s-${b.s}">${labelOf(b.s)}</span></td>
     </tr>`;
-  }).join("") : `<tr><td colspan="9" style="padding:34px 12px;color:var(--dim)">
+  }).join("") : `<tr><td colspan="9" style="padding:30px 10px;color:var(--muted)">
       No board matches that. Try clearing the filter, or add a board below.</td></tr>`;
 }
 
