@@ -191,6 +191,16 @@ const OVERRIDES = {
       return { top: +m[2].replace(/,/g, ""), clicks: +m[1].replace(/,/g, ""), leader: lead?.[1] ?? null, entry: null, last: extractLastBidHours(text) };
     },
   },
+  // lamborghini.lol (self-submitted): the page's $200,000 is the funding goal
+  // of the whole billboard. The sponsor table row is "1 Comp AI $25,000 12.5% 21h ago".
+  "lamborghini.lol": {
+    parse: (_h, text) => {
+      const m = text.match(/Claimed\s+1\s+(.{1,50}?)\s+\$\s?([\d,]+(?:\.\d{1,2})?)\s+[\d.]+%\s+(\d+)\s*(m|min|minute|h|hr|hour|d|day)s?\s*ago/i);
+      if (!m) throw new Error("no sponsor row");
+      const U = { m: 1 / 60, h: 1, d: 24 };
+      return { top: +m[2].replace(/,/g, ""), leader: m[1], clicks: null, entry: null, last: +m[3] * U[m[4][0].toLowerCase()] };
+    },
+  },
   // srank.lol: "Take #1 at $17" is the claim price; each row shows its real "$X total".
   "srank.lol": {
     parse: (_h, text) => {
