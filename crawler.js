@@ -40,15 +40,22 @@ const OVERRIDES = {
   "outbid.lol": {
     parse: (html, text) => {
       const rows = [...html.matchAll(/font-bold">([^<]{1,60})<\/p><p[^>]*>\$\s?([\d,]+(?:\.\d{1,2})?)</g)]
-        .map((m) => ({ name: m[1], amt: Number(m[2].replace(/,/g, "")) }));
+        .map((m) => ({ name: m[1], amt: Number(m[2].replace(/,/g, "")), i: m.index }));
       if (rows.length < 2) throw new Error("no leaderboard rows");
       const top = rows.reduce((m, r) => (r.amt > m.amt ? r : m));
+      // clicks and last-bid must come from the #1 row itself — the page also
+      // has a "Trending right now" ticker in clicks/h that must not match
+      const next = rows.filter((r) => r.i > top.i).sort((a, b) => a.i - b.i)[0];
+      const row = strip(html.slice(top.i, next ? next.i : top.i + 4000));
+      const clicks = row.match(/([\d,]+)\s*clicks\b(?!\s*\/)/i);
+      const ago = row.match(/(\d+)\s*(second|sec|s|minute|min|m|hour|hr|h|day|d)s?\s*ago\b/i);
+      const U = { s: 1 / 3600, m: 1 / 60, h: 1, d: 24 };
       return {
         top: top.amt,
         leader: top.name,
         entry: extractEntry(text),
-        clicks: extractTopClicks(text),
-        last: extractLastBidHours(text),
+        clicks: clicks ? Number(clicks[1].replace(/,/g, "")) : null,
+        last: ago ? Number(ago[1]) * U[ago[2][0].toLowerCase()] : null,
       };
     },
   },
@@ -221,9 +228,9 @@ function extractLeader(text, top, ownHost) {
   return null;
 }
 
-/** "9391 clicks" / "7 clicks" / "0 clicks" */
+/** "9391 clicks" / "7 clicks" / "0 clicks" — never "8603 clicks/h" (rate tickers) */
 function extractTopClicks(text) {
-  const m = text.slice(0, 2500).match(/([\d][\d,]{0,8})\s*clicks?\b/i);
+  const m = text.slice(0, 2500).match(/([\d][\d,]{0,8})\s*clicks?\b(?!\s*\/)/i);
   return m ? Number(m[1].replace(/,/g, "")) : null;
 }
 
