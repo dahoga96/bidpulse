@@ -182,7 +182,6 @@ footer{
       <th data-sort="name">Board <span class="car">↕</span></th>
       <th data-sort="cat">Ranks <span class="car">↕</span></th>
       <th data-sort="top" data-active class="num">#1 price <span class="car">↕</span></th>
-      <th>Holding #1</th>
       <th data-sort="clicks" class="num">Clicks on #1 <span class="car">↕</span></th>
       <th data-sort="cpc" class="num">$ / click <span class="car">↕</span></th>
       <th data-sort="last" class="num">Last bid <span class="car">↕</span></th>
@@ -322,7 +321,7 @@ function drawStrip(){
     ["Boards tracked", BOARDS.length, ""],
     ["Taking bids", live, ""],
     ["Flatlined", flat, "warn"],
-    ["Sitting at #1", money(pot), ""],
+    ["At #1 · all boards combined", money(pot), ""],
     ["Median $/click", "$"+med.toFixed(2), ""],
   ].map(([l,v,cls])=>`<div class="stat ${cls}"><span>${l}</span><b>${v}</b></div>`).join("");
 }
@@ -387,14 +386,13 @@ function render(){
       </td>
       <td class="dim">${esc(b.c)}</td>
       <td class="num">${b.top?money(b.top):"—"}</td>
-      <td class="dim">${b.leader?esc(b.leader):"—"}</td>
       <td class="num dim">${b.clicks?b.clicks.toLocaleString("en-US"):"—"}</td>
       <td class="num cpc ${cpcCls}">${b.cpc===null?"—":"$"+b.cpc.toFixed(2)}</td>
       <td class="num dim">${ago(b.last)}</td>
       <td>${spark(b)}</td>
       <td><span class="status s-${b.s}">${labelOf(b.s)}</span></td>
     </tr>`;
-  }).join("") : `<tr><td colspan="9" style="padding:30px 10px;color:var(--muted)">
+  }).join("") : `<tr><td colspan="8" style="padding:30px 10px;color:var(--muted)">
       No board matches that. Try clearing the filter, or add a board below.</td></tr>`;
 }
 
