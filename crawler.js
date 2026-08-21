@@ -52,6 +52,38 @@ const OVERRIDES = {
       };
     },
   },
+  // biddirectory.lol's biggest figure is the bid cap ("at most $100 above the
+  // current top ($45–$144)"). The real #1 row is "🥇 … <n> clicks $44
+  // Overtake for $45".
+  "biddirectory.lol": {
+    parse: (_html, text) => {
+      const row = text.match(/🥇[\s\S]{0,300}?([\d,]+)\s*clicks\s*\$\s?([\d,]+(?:\.\d{1,2})?)\s*Overtake for/);
+      if (!row) throw new Error("no 🥇 row");
+      const lead = text.match(/🥇[\s\S]{0,120}?\b([a-z0-9-]+(?:\.[a-z0-9-]+)*\.[a-z]{2,})\b/i);
+      return {
+        top: Number(row[2].replace(/,/g, "")),
+        clicks: Number(row[1].replace(/,/g, "")),
+        leader: lead ? lead[1] : null,
+        entry: null,
+        last: extractLastBidHours(text),
+      };
+    },
+  },
+  // topnewsletters.lol's headline is the claim price; the real #1 row is
+  // "<n> clicks $55 claim this inbox for $56".
+  "topnewsletters.lol": {
+    parse: (_html, text) => {
+      const m = text.match(/([\d,]+)\s*clicks\s*\$\s?([\d,]+(?:\.\d{1,2})?)\s*claim this inbox for/i);
+      if (!m) throw new Error("no #1 inbox row");
+      return {
+        top: Number(m[2].replace(/,/g, "")),
+        clicks: Number(m[1].replace(/,/g, "")),
+        leader: null,
+        entry: null,
+        last: extractLastBidHours(text),
+      };
+    },
+  },
   // mostexpensivelink.com is a single-slot auction; the biggest figure on the
   // page is cumulative spend. Current value, owner, clicks and "owned for" are
   // all stated explicitly.
