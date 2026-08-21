@@ -1,0 +1,70 @@
+# Crawls every board, then publishes the site to Cloudflare Pages via wrangler
+# DIRECT UPLOAD. Deliberately not using Cloudflare's git integration: a deploy
+# every 15 minutes is ~2,900 builds/month, and Pages' build system is capped at
+# 500/month on the free plan. Direct uploads don't count against that cap.
+#
+# Needs two repo secrets (Settings → Secrets and variables → Actions):
+#   CLOUDFLARE_API_TOKEN   — token with the "Cloudflare Pages: Edit" permission
+#   CLOUDFLARE_ACCOUNT_ID  — from the Cloudflare dashboard URL / right sidebar
+#
+# History note: history.json (sparkline data) is carried between runs by
+# publishing it with the site and re-downloading it at the start of the next
+# run. No commits back to the repo, no cache juggling.
+
+name: Crawl & deploy
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Never let two crawls interleave; queue instead of cancel so a manual run
+# right after a scheduled one still deploys.
+concurrency:
+  group: crawl-deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  # pages.dev names are global — if "bidpulse" is taken, change this once here.
+  PROJECT_NAME: bidpulse
+
+jobs:
+  crawl-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Restore history from the live site
+        run: |
+          curl -fsS --max-time 20 "https://${PROJECT_NAME}.pages.dev/history.json?t=$(date +%s)" -o history.json \
+            || echo "no previous history.json (first deploy?) — sparklines start fresh"
+
+      - name: Crawl boards
+        run: node crawler.js
+
+      - name: Assemble site
+        run: |
+          mkdir -p dist
+          cp index.html _headers boards.json history.json dist/
+
+      - name: Ensure Pages project exists
+        run: npx --yes wrangler pages project create "$PROJECT_NAME" --production-branch=main 2>/dev/null || true
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy dist --project-name=${{ env.PROJECT_NAME }} --branch=main

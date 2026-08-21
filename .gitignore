@@ -1,6 +1,7 @@
 node_modules/
+boards.json
 history.json
 .DS_Store
 .env
-.vercel/
+dist/
 *.log

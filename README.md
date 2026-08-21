@@ -51,37 +51,31 @@ the operators pile on and you're done.
 
 ## Deploy
 
-```bash
-npx vercel deploy --prod
-```
+Cloudflare Pages, via `.github/workflows/crawl-and-deploy.yml`. Every 15 minutes
+(and on every push to main) the workflow crawls all boards and publishes
+`index.html + _headers + boards.json + history.json` with a wrangler **direct
+upload** — deliberately not Cloudflare's git integration, because 96 deploys a
+day is ~2,900 builds/month against Pages' 500/month free build cap. Direct
+uploads don't count against it.
 
-Static, so Cloudflare Pages / Netlify work identically. Then run the crawler on a
-schedule — GitHub Actions is simplest:
+One-time setup, in the GitHub repo under Settings → Secrets and variables → Actions:
 
-```yaml
-# .github/workflows/crawl.yml
-on:
-  schedule: [{ cron: "*/15 * * * *" }]
-  workflow_dispatch:
-jobs:
-  crawl:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with: { node-version: 20 }
-      - run: node crawler.js
-      - run: |
-          git config user.name  "bidpulse-bot"
-          git config user.email "bot@users.noreply.github.com"
-          git add boards.json history.json
-          git commit -m "crawl $(date -u +%FT%TZ)" || exit 0
-          git push
-```
+1. `CLOUDFLARE_API_TOKEN` — create at dash.cloudflare.com → My Profile →
+   API Tokens, with the **Cloudflare Pages: Edit** permission.
+2. `CLOUDFLARE_ACCOUNT_ID` — shown in the dashboard's right sidebar.
 
-Note this needs `history.json` committed, so drop it from `.gitignore` if you go this
-route. Cleaner alternative once there's traffic: run the crawler on a small worker and
-write `boards.json` to object storage.
+The first workflow run creates the Pages project itself and the site appears at
+`https://bidpulse.pages.dev`. If that name is taken, change `PROJECT_NAME` once
+at the top of the workflow.
+
+Two things to know about the setup:
+
+- `history.json` is never committed; each run re-downloads it from the live site,
+  appends the new crawl, and republishes it. If a run is skipped the sparklines
+  just get a gap, nothing breaks.
+- GitHub disables cron workflows after 60 days without a repo push. If the site
+  goes quiet, that's the first thing to check (Actions tab shows a re-enable
+  button).
 
 ## Crawling manners
 
