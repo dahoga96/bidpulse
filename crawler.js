@@ -61,6 +61,12 @@ const OVERRIDES = {
       return { top: Number(m[1].replace(/,/g, "")), entry: null, clicks: null, last: extractLastBidHours(text), leader: null };
     },
   },
+  // warmap.lol (self-submitted) sells countries on a map; the only figure in
+  // its HTML is a $50,000 "conquer the world" price tag, not a bid. Report
+  // nothing rather than that number until it grows a parseable leaderboard.
+  "warmap.lol": {
+    parse: () => { throw new Error("map game — no parseable leaderboard yet"); },
+  },
   // xbid.lol shows preset bid-amount chips ($5/$25/$100) that the generic pass
   // mistakes for the top bid; the real figure is the explicit "#1 costs $X".
   "xbid.lol": {
