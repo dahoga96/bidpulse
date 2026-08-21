@@ -54,7 +54,6 @@ the operators pile on and you're done.
 - [ ] Fix parse failures via `OVERRIDES` in crawler.js — explicit selectors, not a
       cleverer regex. A silently wrong number is worse than a `—`.
 - [ ] Create the `BOARD_SUBMIT_TOKEN` secret so the submit form works (see Deploy).
-- [ ] Put a real bot URL in the crawler's `UA` string.
 - [ ] Publish a corrections policy and honour it the first time an operator is right.
 
 ## Deploy
@@ -79,7 +78,9 @@ One-time setup, in the GitHub repo under Settings → Secrets and variables → 
 
 The first workflow run creates the Pages project itself and the site appears at
 `https://bidpulse.pages.dev`. If that name is taken, change `PROJECT_NAME` once
-at the top of the workflow.
+at the top of the workflow. The public domain is **https://bidpulse.dev** (a
+Pages custom domain); the pages.dev URL keeps working as an alias and the
+workflow's history-restore step deliberately stays on it.
 
 Two things to know about the setup:
 

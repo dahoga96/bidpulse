@@ -16,7 +16,7 @@
 const REPO = "dahoga96/bidpulse";
 const CONFIG_PATH = "boards.config.json";
 const MAX_CATEGORY = 60;
-const UA = "BidpulseBot/1.0 (+https://bidpulse.pages.dev) - submission check";
+const UA = "BidpulseBot/1.0 (+https://bidpulse.dev) - submission check";
 
 const strip = (html) =>
   html

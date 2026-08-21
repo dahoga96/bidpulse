@@ -20,7 +20,7 @@
 
 import { writeFile, readFile } from "node:fs/promises";
 
-const UA = "BidpulseBot/1.0 (+https://bidpulse.pages.dev/bot) - reads public leaderboards, 1 req/board/5min";
+const UA = "BidpulseBot/1.0 (+https://bidpulse.dev) - reads public leaderboards, 1 req/board/5min";
 const TIMEOUT_MS = 12000;
 const CONCURRENCY = 4;          // be a good citizen
 const DELAY_MS = 400;
