@@ -120,5 +120,35 @@
     "u": "https://warmap.lol",
     "c": "Countries",
     "addedAt": "2026-08-21T22:13:15.460Z"
+  },
+  {
+    "n": "mostexpensivelink.com",
+    "u": "https://mostexpensivelink.com",
+    "c": "A single link",
+    "addedAt": "2026-08-21T22:12:43.822Z"
+  },
+  {
+    "n": "outbidception.lol",
+    "u": "https://outbidception.lol",
+    "c": "Bid boards",
+    "addedAt": "2026-08-21T22:12:43.822Z"
+  },
+  {
+    "n": "bidwall.lol",
+    "u": "https://bidwall.lol",
+    "c": "Companies",
+    "addedAt": "2026-08-21T22:12:43.822Z"
+  },
+  {
+    "n": "srank.lol",
+    "u": "https://srank.lol",
+    "c": "Twitch streamers",
+    "addedAt": "2026-08-21T22:12:43.822Z"
+  },
+  {
+    "n": "peerpush.com",
+    "u": "https://peerpush.com/outbid",
+    "c": "Products",
+    "addedAt": "2026-08-21T22:12:43.822Z"
   }
 ]

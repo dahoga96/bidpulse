@@ -29,9 +29,76 @@ const DELAY_MS = 400;
    (functions/api/submit.js) can append to it without touching code. */
 const BOARDS = JSON.parse(await readFile("boards.config.json", "utf8"));
 
-/* Per-board fixes. Keep these dumb and explicit. */
+/* Per-board fixes. Keep these dumb and explicit.
+   `src` fetches that URL instead of the board page (for boards that render
+   client-side but expose a JSON API). `parse` gets the raw body and returns
+   metric fields; throw on bad data and the board is marked unparsed. */
 const OVERRIDES = {
-  // "coinup.lol": { currency: "BTC", parse: (html) => ({ top: ..., clicks: ... }) },
+  // mostexpensivelink.com is a single-slot auction; the biggest figure on the
+  // page is cumulative spend. Current value, owner, clicks and "owned for" are
+  // all stated explicitly.
+  "mostexpensivelink.com": {
+    parse: (_html, text) => {
+      const m = text.match(/Currently worth \$([\d,]+(?:\.\d{1,2})?)\s+(\S+)\s+Owner/i);
+      if (!m) throw new Error("no 'Currently worth' figure");
+      const clicks = text.match(/([\d,]+)\s*clicks so far/i);
+      const owned = text.match(/owned for (\d+)\s*(minute|hour|day)s?/i);
+      return {
+        top: Number(m[1].replace(/,/g, "")),
+        leader: m[2],
+        entry: null,
+        clicks: clicks ? Number(clicks[1].replace(/,/g, "")) : null,
+        last: owned ? Number(owned[1]) * { minute: 1 / 60, hour: 1, day: 24 }[owned[2].toLowerCase()] : null,
+      };
+    },
+  },
+  // peerpush.com/outbid: hero copy carries big marketing numbers; the #1 row
+  // is the first "<n> impressions $X active" entry.
+  "peerpush.com": {
+    parse: (_html, text) => {
+      const m = text.match(/impressions \$([\d,]+(?:\.\d{1,2})?) active Outbid for/i);
+      if (!m) throw new Error("no leaderboard row");
+      return { top: Number(m[1].replace(/,/g, "")), entry: null, clicks: null, last: extractLastBidHours(text), leader: null };
+    },
+  },
+  // xbid.lol shows preset bid-amount chips ($5/$25/$100) that the generic pass
+  // mistakes for the top bid; the real figure is the explicit "#1 costs $X".
+  "xbid.lol": {
+    parse: (_html, text) => {
+      const m = text.match(/#1 costs \$\s?([\d,]+(?:\.\d{1,2})?)/i);
+      if (!m) throw new Error("no '#1 costs' figure");
+      return {
+        top: Number(m[1].replace(/,/g, "")),
+        entry: null,
+        clicks: extractTopClicks(text),
+        last: extractLastBidHours(text),
+        leader: null,
+      };
+    },
+  },
+  // xme.lol renders its page with JavaScript, so the HTML has no figures —
+  // but its leaderboard is a public JSON API.
+  "xme.lol": {
+    src: "https://xme.lol/api/leaderboard",
+    parse: (body) => {
+      const entries = JSON.parse(body).entries;
+      if (!entries?.length) throw new Error("empty leaderboard");
+      const paid = entries.map((e) => e.total_paid_cents / 100);
+      const top = Math.max(...paid);
+      const leader = entries[paid.indexOf(top)];
+      const pos = paid.filter((p) => p > 0);
+      return {
+        top,
+        leader: "@" + (leader.display_handle || leader.handle),
+        entry: pos.length ? Math.min(...pos) : null,
+        clicks: leader.clicks ?? null,
+        // the API has no bid timestamps; main() derives last-bid from our own
+        // history when it sees the top bid increase between crawls
+        last: null,
+        cpc: leader.clicks ? Number((top / leader.clicks).toFixed(2)) : null,
+      };
+    },
+  },
 };
 
 /* ------------------------------------------------------------------ */
@@ -48,16 +115,39 @@ const strip = (html) =>
     .replace(/\s+/g, " ")
     .trim();
 
+/** Money figures with their positions in the head of the page. */
+function moneyMatches(text) {
+  // $10,002 / $13.50 / €2 — the #1 row is always near the top of the leaderboard.
+  return [...text.slice(0, 2500).matchAll(/[$€£]\s?([\d][\d,]{0,9}(?:\.\d{1,2})?)(?!\s*(?:k|m|bn|million|billion|\/|%))/gi)]
+    .map((m) => ({ v: Number(m[1].replace(/,/g, "")), i: m.index }))
+    .filter((x) => x.v > 0 && x.v < 1_000_000);
+}
+
 /** Highest dollar figure that looks like a bid, not a marketing number. */
 function extractTopBid(text) {
-  // $10,002 / $13 / €2 — take the largest in the first ~1200 chars of board content,
-  // because the #1 row is always near the top of the leaderboard.
+  const ms = moneyMatches(text);
+  return ms.length ? Math.max(...ms.map((x) => x.v)) : null;
+}
+
+/** Who holds #1: a domain or @handle sitting just before the top bid figure.
+    Anything less explicit risks naming the wrong leader, so return null. */
+function extractLeader(text, top, ownHost) {
+  const own = ownHost.replace(/^www\./, "");
+  const notOwn = (c) => c.toLowerCase().replace(/^www\./, "") !== own;
+  const TOKEN = /@[A-Za-z0-9_]{2,15}\b|\b[a-z0-9][a-z0-9-]*(?:\.[a-z0-9-]+)*\.[a-z]{2,}\b/gi;
+  // 1) a domain or @handle sitting just before the top bid figure
+  const hit = moneyMatches(text).find((x) => x.v === top);
+  if (hit) {
+    const before = (text.slice(Math.max(0, hit.i - 120), hit.i).match(TOKEN) || []).filter(notOwn);
+    if (before.length) return before[before.length - 1];
+  }
+  // 2) an explicit "#1 <domain-or-handle>" — but only if a "#2" follows soon
+  // after (real leaderboards come in sequence; marketing copy mentions #1 alone)
   const head = text.slice(0, 2500);
-  const matches = [...head.matchAll(/[$€£]\s?([\d][\d,]{0,9})(?!\s*(?:k|m|bn|million|billion|\/|%))/gi)]
-    .map((m) => Number(m[1].replace(/,/g, "")))
-    .filter((n) => n > 0 && n < 1_000_000);
-  if (!matches.length) return null;
-  return Math.max(...matches);
+  for (const m of head.matchAll(/#\s?1\s+(@[A-Za-z0-9_]{2,15}\b|[a-z0-9][a-z0-9-]*(?:\.[a-z0-9-]+)*\.[a-z]{2,}\b)/gi)) {
+    if (notOwn(m[1]) && /#\s?2\b/.test(head.slice(m.index, m.index + 400))) return m[1];
+  }
+  return null;
 }
 
 /** "9391 clicks" / "7 clicks" / "0 clicks" */
@@ -96,27 +186,32 @@ async function fetchBoard(board) {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
   try {
-    const res = await fetch(board.u, {
-      headers: { "user-agent": UA, accept: "text/html" },
+    const o = OVERRIDES[board.n];
+    const res = await fetch(o?.src ?? board.u, {
+      headers: { "user-agent": UA, accept: "text/html, application/json" },
       redirect: "follow",
       signal: ctrl.signal,
     });
     if (!res.ok) throw new Error("HTTP " + res.status);
     const html = await res.text();
-    const text = strip(html);
 
-    if (OVERRIDES[board.n]?.parse) {
-      return { ...board, ...OVERRIDES[board.n].parse(html, text), ok: true, checkedAt: Date.now() };
+    if (o?.parse) {
+      const r = { ...board, ok: true, ...o.parse(html, strip(html)), checkedAt: Date.now() };
+      if (r.cpc == null && r.top && r.clicks) r.cpc = Number((r.top / r.clicks).toFixed(2));
+      return r;
     }
+    const text = strip(html);
 
     const top = extractTopBid(text);
     const clicks = extractTopClicks(text);
     const last = extractLastBidHours(text);
     const entry = extractEntry(text);
+    const leader = top ? extractLeader(text, top, new URL(board.u).hostname) : null;
 
     return {
       ...board,
       top,
+      leader,
       entry,
       clicks,
       last,
@@ -170,6 +265,18 @@ async function main() {
     h.push({ t: now, top: r.top ?? null, clicks: r.clicks ?? null });
     // keep 48h at 15-min resolution
     history[r.n] = h.filter((p) => now - p.t < 48 * 3600 * 1000);
+
+    // boards that publish no "x ago" text (e.g. API overrides): a rise in the
+    // top bid between crawls IS a bid, so derive last-bid from our own history
+    if (r.last == null && r.ok) {
+      const pts = history[r.n];
+      for (let i = pts.length - 1; i > 0; i--) {
+        if (pts[i].top != null && pts[i - 1].top != null && pts[i].top > pts[i - 1].top) {
+          r.last = (now - pts[i].t) / 3_600_000;
+          break;
+        }
+      }
+    }
 
     // series = bid deltas per bucket, which is what "activity" actually means
     const pts = history[r.n];

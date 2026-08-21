@@ -182,7 +182,7 @@ footer{
       <th data-sort="name">Board <span class="car">↕</span></th>
       <th data-sort="cat">Ranks <span class="car">↕</span></th>
       <th data-sort="top" data-active class="num">#1 price <span class="car">↕</span></th>
-      <th data-sort="entry" class="num">Entry <span class="car">↕</span></th>
+      <th>Holding #1</th>
       <th data-sort="clicks" class="num">Clicks on #1 <span class="car">↕</span></th>
       <th data-sort="cpc" class="num">$ / click <span class="car">↕</span></th>
       <th data-sort="last" class="num">Last bid <span class="car">↕</span></th>
@@ -295,7 +295,6 @@ const esc      = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;
 function derive(){
   BOARDS.forEach(b=>{
     b.top    = b.top ?? 0;
-    b.entry  = b.entry ?? 1;
     b.clicks = b.clicks ?? 0;
     b.cpc = b.clicks > 0 && b.top > 0 ? b.top / b.clicks : null;
     b.s   = statusOf(b.last);
@@ -373,7 +372,7 @@ function render(){
     .filter(b => filter==="all" || b.s===filter)
     .filter(b => !query || (b.n+" "+b.c).toLowerCase().includes(query))
     .sort((a,b)=>{
-      const k = {name:"n",cat:"c",top:"top",entry:"entry",clicks:"clicks",cpc:"cpc",last:"last"}[sortKey];
+      const k = {name:"n",cat:"c",top:"top",clicks:"clicks",cpc:"cpc",last:"last"}[sortKey];
       let x=a[k], y=b[k];
       if(x===null) x=Infinity; if(y===null) y=Infinity;
       if(typeof x==="string") return x.localeCompare(y)*sortDir;
@@ -388,7 +387,7 @@ function render(){
       </td>
       <td class="dim">${esc(b.c)}</td>
       <td class="num">${b.top?money(b.top):"—"}</td>
-      <td class="num dim">${money(b.entry)}</td>
+      <td class="dim">${b.leader?esc(b.leader):"—"}</td>
       <td class="num dim">${b.clicks?b.clicks.toLocaleString("en-US"):"—"}</td>
       <td class="num cpc ${cpcCls}">${b.cpc===null?"—":"$"+b.cpc.toFixed(2)}</td>
       <td class="num dim">${ago(b.last)}</td>
