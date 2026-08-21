@@ -39,14 +39,22 @@ h1{font-size:clamp(24px,4vw,34px);font-weight:700;letter-spacing:-.02em;line-hei
 .stat b{font-size:19px;font-weight:650;font-variant-numeric:tabular-nums}
 .stat.warn b{color:var(--bad)}
 
-/* ---------- 48h activity chart ---------- */
-.ecg{margin:22px 0 0}
+/* ---------- 2h activity chart ---------- */
+.ecg{margin:22px 0 0;position:relative}
 .ecg-head{display:flex;justify-content:space-between;align-items:baseline;font-size:12px;color:var(--muted);margin-bottom:6px}
 .ecg-head b{font-weight:500;color:var(--ink-2)}
 .ecg svg{display:block;width:100%;height:64px}
-.trace{fill:none;stroke:var(--blue);stroke-width:1.5;stroke-linejoin:round;stroke-linecap:round}
 .baseline{stroke:var(--line-strong);stroke-width:1}
+.bar{fill:var(--blue)}
+.axis{fill:var(--muted);font-size:10px;font-family:var(--sans)}
 .ecg-foot{font-size:12.5px;color:var(--ink-2);margin-top:6px}
+.tip{
+  position:absolute;display:none;z-index:10;pointer-events:none;white-space:nowrap;
+  background:#fff;border:1px solid var(--line-strong);border-radius:6px;
+  padding:7px 10px;font-size:12.5px;box-shadow:0 2px 10px rgba(0,0,0,.08);
+}
+.tip b{font-weight:600}
+.tip .when{color:var(--muted);font-size:11.5px;margin-top:3px}
 
 .sample{
   margin-top:20px;border:1px solid var(--bad);border-left-width:4px;
@@ -152,13 +160,14 @@ footer{
 <!-- ============ STATS ============ -->
 <div class="strip-in" id="strip"></div>
 
-<!-- 48h aggregate bid activity -->
+<!-- bid activity, last 2 hours -->
 <div class="ecg">
   <div class="ecg-head">
-    <span>Bid activity across all boards · last 48h</span>
+    <span>Bid activity across all boards · last 2h</span>
     <b id="ecgReading">—</b>
   </div>
-  <svg id="ecgSvg" viewBox="0 0 1000 64" preserveAspectRatio="none" aria-label="Aggregate bid activity across all tracked boards over the last 48 hours"></svg>
+  <svg id="ecgSvg" viewBox="0 0 1000 64" preserveAspectRatio="none" aria-label="Bids across all tracked boards over the last 2 hours; hover a bar to see the board"></svg>
+  <div class="tip" id="ecgTip"></div>
   <div class="ecg-foot" id="ecgFoot">—</div>
 </div>
 
@@ -282,6 +291,7 @@ const FALLBACK = [
 ];
 
 let BOARDS = FALLBACK;
+let EVENTS = [], DATA_TS = null;
 let live = 0, flat = 0;
 
 /* ---------- derive ---------- */
@@ -326,23 +336,62 @@ function drawStrip(){
   ].map(([l,v,cls])=>`<div class="stat ${cls}"><span>${l}</span><b>${v}</b></div>`).join("");
 }
 
-/* ---------- 48h activity ---------- */
+/* ---------- 2h activity ----------
+   One bar per crawl tick where the top bid rose on any board; hover names
+   the board(s) and amounts. Bar height is sqrt-scaled so a $10 bid stays
+   visible next to a $1,000 one. */
 function drawECG(){
-  const W=1000,H=64,pad=4;
-  // aggregate activity: sum of all board series, one point per real bucket
-  const agg = Array.from({length:24},(_,i)=>BOARDS.reduce((s,b)=>s+(b.series[i]??0),0));
-  const max = Math.max(...agg, 0.01);
-  const d = agg.map((v,i)=>{
-    const x = pad + (W-pad*2)*(i/(agg.length-1));
-    const y = H-pad - (v/max)*(H-pad*2);
-    return (i?"L":"M")+x.toFixed(1)+","+y.toFixed(1);
-  }).join(" ");
+  const W=1000,H=64,pad=4,MS=2*3600*1000;
+  const now = DATA_TS ?? Date.now();
+  const evs = EVENTS.filter(e=>e.t<=now && now-e.t<=MS);
+
+  const byT=new Map();
+  for(const e of evs){ if(!byT.has(e.t)) byT.set(e.t,[]); byT.get(e.t).push(e); }
+  const ticks=[...byT.entries()].map(([t,list])=>({t,list,total:list.reduce((s,e)=>s+e.a,0)}));
+  const maxA=Math.max(...ticks.map(g=>g.total),1);
+  const xOf=t=>pad+(W-pad*2)*(1-(now-t)/MS);
+
+  const bars=ticks.map(g=>{
+    const h=6+(H-pad*2-10)*Math.sqrt(g.total/maxA);
+    return `<rect class="bar" x="${(xOf(g.t)-3).toFixed(1)}" y="${(H-pad-h).toFixed(1)}" width="6" height="${h.toFixed(1)}" rx="2"/>`;
+  }).join("");
+
   document.getElementById("ecgSvg").innerHTML =
     `<line class="baseline" x1="0" y1="${H-pad}" x2="${W}" y2="${H-pad}"/>
-     <path class="trace" d="${d}"/>`;
-  document.getElementById("ecgReading").textContent = live + " of " + BOARDS.length + " taking bids";
+     <text class="axis" x="${pad}" y="11">2h ago</text>
+     <text class="axis" x="${W-pad}" y="11" text-anchor="end">now</text>` + bars;
+
+  const total=ticks.reduce((s,g)=>s+g.total,0);
+  document.getElementById("ecgReading").textContent = evs.length
+    ? `${evs.length} bid${evs.length>1?"s":""} · +$${total.toLocaleString("en-US",{maximumFractionDigits:2})} in 2h`
+    : "No bids in the last 2 hours";
   document.getElementById("ecgFoot").textContent =
     `${flat} boards have taken no bid in 12 hours. A slot on those delivers nothing at any price.`;
+
+  wireTip(ticks,xOf,now);
+}
+
+function wireTip(ticks,xOf,now){
+  const svg=document.getElementById("ecgSvg"), tip=document.getElementById("ecgTip"), box=svg.parentElement;
+  svg.onmousemove=ev=>{
+    if(!ticks.length) return;
+    const r=svg.getBoundingClientRect();
+    const vx=(ev.clientX-r.left)/r.width*1000;
+    let best=null,bd=Infinity;
+    for(const g of ticks){ const d=Math.abs(xOf(g.t)-vx); if(d<bd){bd=d;best=g;} }
+    if(bd>40){ tip.style.display="none"; return; }
+    const mins=Math.round((now-best.t)/60000);
+    const when=mins<60?`${mins}m ago`:`${(mins/60).toFixed(1).replace(/\.0$/,"")}h ago`;
+    tip.innerHTML=best.list.map(e=>`<div><b>${esc(e.n)}</b> +$${e.a.toLocaleString("en-US",{maximumFractionDigits:2})}</div>`).join("")
+      +`<div class="when">${when}</div>`;
+    tip.style.display="block";
+    const br=box.getBoundingClientRect();
+    let left=ev.clientX-br.left+14;
+    if(left+tip.offsetWidth>br.width) left=ev.clientX-br.left-tip.offsetWidth-14;
+    tip.style.left=left+"px";
+    tip.style.top=(ev.clientY-br.top-tip.offsetHeight-8)+"px";
+  };
+  svg.onmouseleave=()=>{ tip.style.display="none"; };
 }
 
 /* ---------- sparkline ----------
@@ -453,6 +502,8 @@ async function boot(){
     const parsed = (data.boards || []).filter(b => b.ok !== false && b.top != null);
     if(!parsed.length) throw new Error("no parsed boards in boards.json");
     BOARDS = parsed;
+    EVENTS = data.events || [];
+    DATA_TS = data.updatedAt;
     SAMPLE = false;
     document.getElementById("updated").textContent =
       "Last read " + new Date(data.updatedAt).toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"}) +

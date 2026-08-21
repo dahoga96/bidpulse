@@ -289,13 +289,26 @@ async function main() {
     });
   }
 
+  // bid events for the activity chart: a rise in a board's top bid between
+  // crawls is a bid — {t, n(board), a(mount)}, resolution = crawl interval
+  const events = [];
+  for (const r of results) {
+    const pts = history[r.n] ?? [];
+    for (let i = 1; i < pts.length; i++) {
+      if (pts[i].top != null && pts[i - 1].top != null && pts[i].top > pts[i - 1].top) {
+        events.push({ t: pts[i].t, n: r.n, a: Number((pts[i].top - pts[i - 1].top).toFixed(2)) });
+      }
+    }
+  }
+  events.sort((a, b) => a.t - b.t);
+
   const failed = results.filter((r) => !r.ok);
   if (failed.length) {
     console.warn(`[warn] ${failed.length} board(s) failed to parse:`);
     failed.forEach((f) => console.warn("  -", f.n, f.error || "no bid figure found"));
   }
 
-  await writeFile("boards.json", JSON.stringify({ updatedAt: now, boards: results }, null, 2));
+  await writeFile("boards.json", JSON.stringify({ updatedAt: now, boards: results, events }, null, 2));
   await writeFile("history.json", JSON.stringify(history));
   console.log(`[ok] wrote ${results.length} boards, ${results.length - failed.length} parsed cleanly`);
 }
