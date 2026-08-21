@@ -62,6 +62,23 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
+      # The submission endpoint (functions/api/submit.js) commits accepted
+      # boards to this repo. It needs a fine-grained GitHub PAT (Contents
+      # read/write, this repo only) stored as the BOARD_SUBMIT_TOKEN Actions
+      # secret; this step mirrors it into the Pages project. Until the secret
+      # exists, /api/submit answers 503 and everything else still works.
+      - name: Sync submission token to Pages
+        env:
+          BOARD_SUBMIT_TOKEN: ${{ secrets.BOARD_SUBMIT_TOKEN }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          if [ -n "$BOARD_SUBMIT_TOKEN" ]; then
+            printf '%s' "$BOARD_SUBMIT_TOKEN" | npx --yes wrangler pages secret put BOARD_SUBMIT_TOKEN --project-name "$PROJECT_NAME"
+          else
+            echo "BOARD_SUBMIT_TOKEN not set — /api/submit will answer 503 until it is"
+          fi
+
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/wrangler-action@v3
         with:

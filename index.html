@@ -181,7 +181,7 @@ footer{
     <tr>
       <th data-sort="name">Board <span class="car">↕</span></th>
       <th data-sort="cat">Ranks <span class="car">↕</span></th>
-      <th data-sort="top" class="num">#1 price <span class="car">↕</span></th>
+      <th data-sort="top" data-active class="num">#1 price <span class="car">↕</span></th>
       <th data-sort="entry" class="num">Entry <span class="car">↕</span></th>
       <th data-sort="clicks" class="num">Clicks on #1 <span class="car">↕</span></th>
       <th data-sort="cpc" class="num">$ / click <span class="car">↕</span></th>
@@ -197,14 +197,16 @@ footer{
 <!-- ============ SUBMIT ============ -->
 <section class="submit" id="claim">
   <h2>Running a board? Get it tracked.</h2>
-  <p>Listing is free and always will be — the index is worthless if it is incomplete. We read your public
-    leaderboard every 15 minutes. No script, no API key, nothing to install.</p>
+  <p>Listing is free and automatic — the index is worthless if it is incomplete. We read the page when you
+    submit it; if we find live bid figures, it goes straight into the index and gets re-read every
+    15 minutes like everything else.</p>
   <form class="form" id="submitForm">
     <input name="url" type="url" required placeholder="https://yourboard.lol" aria-label="Board URL">
     <input name="cat" type="text" required placeholder="What does it rank? e.g. iOS apps" aria-label="What the board ranks">
+    <input name="website" type="text" tabindex="-1" autocomplete="off" aria-hidden="true" style="display:none">
     <button class="btn" type="submit">Add my board</button>
   </form>
-  <p class="note" id="formNote">We check it manually before it goes live. Usually within an hour.</p>
+  <p class="note" id="formNote">Checked automatically. Boards that stop parsing are flagged, not deleted.</p>
 </section>
 
 <!-- ============ METHOD ============ -->
@@ -288,6 +290,7 @@ const statusOf = h => h == null ? "flat" : h < 4 ? "live" : h < 12 ? "cooling" :
 const labelOf  = s => s==="live" ? "Taking bids" : s==="cooling" ? "Cooling" : "Flatlined";
 const money    = n => n >= 1000 ? "$"+n.toLocaleString("en-US") : "$"+n;
 const ago      = h => h == null ? "—" : h < 1 ? Math.round(h*60)+"m" : h < 48 ? Math.round(h)+"h" : Math.round(h/24)+"d";
+const esc      = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 
 function derive(){
   BOARDS.forEach(b=>{
@@ -363,7 +366,7 @@ function spark(b){
 }
 
 /* ---------- render ---------- */
-let filter="all", query="", sortKey="cpc", sortDir=1;
+let filter="all", query="", sortKey="top", sortDir=-1;
 
 function render(){
   const rows = BOARDS
@@ -381,9 +384,9 @@ function render(){
     const cpcCls = b.cpc!==null && b.cpc > 2 ? "bad" : "";
     return `<tr>
       <td class="board">
-        <a href="${b.u}" target="_blank" rel="noopener nofollow">${b.n}</a>${b.orig?'<span class="orig">Original</span>':''}
+        <a href="${esc(b.u)}" target="_blank" rel="noopener nofollow">${esc(b.n)}</a>${b.orig?'<span class="orig">Original</span>':''}
       </td>
-      <td class="dim">${b.c}</td>
+      <td class="dim">${esc(b.c)}</td>
       <td class="num">${b.top?money(b.top):"—"}</td>
       <td class="num dim">${money(b.entry)}</td>
       <td class="num dim">${b.clicks?b.clicks.toLocaleString("en-US"):"—"}</td>
@@ -417,13 +420,29 @@ document.querySelectorAll("th[data-sort]").forEach(th=>{
     render();
   });
 });
-document.getElementById("submitForm").addEventListener("submit",e=>{
+document.getElementById("submitForm").addEventListener("submit",async e=>{
   e.preventDefault();
-  const note=document.getElementById("formNote");
-  // TODO: POST to your endpoint. Placeholder acknowledgement below.
-  note.textContent="Added to the queue. We will read the page and publish it shortly.";
-  note.classList.add("ok");
-  e.target.reset();
+  const form=e.target, note=document.getElementById("formNote"), btn=form.querySelector("button");
+  btn.disabled=true; note.classList.remove("ok");
+  note.textContent="Reading the page…";
+  try{
+    const res=await fetch("/api/submit",{
+      method:"POST",
+      headers:{"content-type":"application/json"},
+      body:JSON.stringify({url:form.url.value.trim(), cat:form.cat.value.trim(), website:form.website.value})
+    });
+    const out=await res.json().catch(()=>({}));
+    if(res.ok){
+      note.textContent=out.message||"Validated and added. It appears on the site within a few minutes.";
+      note.classList.add("ok");
+      form.reset();
+    }else{
+      note.textContent=out.error||"Something went wrong — try again in a minute.";
+    }
+  }catch{
+    note.textContent="Network error — try again in a minute.";
+  }
+  btn.disabled=false;
 });
 
 /* ---------- boot ----------

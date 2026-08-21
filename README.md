@@ -25,10 +25,20 @@ or the Live Server extension.
 ## How it fits together
 
 ```
-crawler.js  →  boards.json   ← the page fetches this on load and every 15 min
-            →  history.json  ← 48h of bid deltas, feeds the pulse sparklines
-index.html  →  everything else; single file, no build step
+boards.config.json      ← the list of tracked boards (data, not code)
+crawler.js              →  boards.json   ← the page fetches this on load and every 15 min
+                        →  history.json  ← 48h of bid deltas, feeds the pulse sparklines
+functions/api/submit.js ← Pages Function behind the "Add my board" form; validates
+                           the page and commits accepted boards to boards.config.json
+index.html              →  everything else; single file, no build step
 ```
+
+Submissions are fully automatic: the endpoint fetches the submitted page, requires
+visible bid figures, rejects duplicates, and commits the entry with the message
+`Add board: <host> (via site submission)`. The commit triggers the deploy workflow,
+so an accepted board is live within a couple of minutes. To remove a board someone
+snuck in, `git revert` that commit (or delete the line) and push — the audit trail
+is the git log.
 
 `index.html` starts with `SAMPLE = true` and a hardcoded `FALLBACK` array. On boot it
 tries `boards.json`; if that loads with real parsed boards, it flips `SAMPLE` to false
@@ -43,9 +53,7 @@ the operators pile on and you're done.
 - [ ] `npm run crawl` and read `boards.json` by hand. Every figure, against the live page.
 - [ ] Fix parse failures via `OVERRIDES` in crawler.js — explicit selectors, not a
       cleverer regex. A silently wrong number is worse than a `—`.
-- [ ] Wire the submit form (`#submitForm`) to a real endpoint. Currently it just
-      shows an acknowledgement.
-- [ ] Set the sponsor slot price and payment link in `SPONSOR`.
+- [ ] Create the `BOARD_SUBMIT_TOKEN` secret so the submit form works (see Deploy).
 - [ ] Put a real bot URL in the crawler's `UA` string.
 - [ ] Publish a corrections policy and honour it the first time an operator is right.
 
@@ -63,6 +71,10 @@ One-time setup, in the GitHub repo under Settings → Secrets and variables → 
 1. `CLOUDFLARE_API_TOKEN` — create at dash.cloudflare.com → My Profile →
    API Tokens, with the **Cloudflare Pages: Edit** permission.
 2. `CLOUDFLARE_ACCOUNT_ID` — shown in the dashboard's right sidebar.
+3. `BOARD_SUBMIT_TOKEN` — a GitHub **fine-grained** PAT (github.com → Settings →
+   Developer settings → Fine-grained tokens) scoped to this repo only, with
+   **Contents: Read and write**. Powers the automatic "Add my board" form; until
+   it exists the form answers "temporarily offline" and nothing else is affected.
 
 The first workflow run creates the Pages project itself and the site appears at
 `https://bidpulse.pages.dev`. If that name is taken, change `PROJECT_NAME` once
