@@ -34,6 +34,24 @@ const BOARDS = JSON.parse(await readFile("boards.config.json", "utf8"));
    client-side but expose a JSON API). `parse` gets the raw body and returns
    metric fields; throw on bad data and the board is marked unparsed. */
 const OVERRIDES = {
+  // outbid.lol's headline figure is the "claim this rank" price (current top
+  // + $5 increment). The real #1 bid is in the leaderboard rows, which pair a
+  // bold name with an amount.
+  "outbid.lol": {
+    parse: (html, text) => {
+      const rows = [...html.matchAll(/font-bold">([^<]{1,60})<\/p><p[^>]*>\$\s?([\d,]+(?:\.\d{1,2})?)</g)]
+        .map((m) => ({ name: m[1], amt: Number(m[2].replace(/,/g, "")) }));
+      if (rows.length < 2) throw new Error("no leaderboard rows");
+      const top = rows.reduce((m, r) => (r.amt > m.amt ? r : m));
+      return {
+        top: top.amt,
+        leader: top.name,
+        entry: extractEntry(text),
+        clicks: extractTopClicks(text),
+        last: extractLastBidHours(text),
+      };
+    },
+  },
   // mostexpensivelink.com is a single-slot auction; the biggest figure on the
   // page is cumulative spend. Current value, owner, clicks and "owned for" are
   // all stated explicitly.
