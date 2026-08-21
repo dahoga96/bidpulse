@@ -1,0 +1,9 @@
+{
+  "cleanUrls": true,
+  "headers": [
+    {
+      "source": "/boards.json",
+      "headers": [{ "key": "Cache-Control", "value": "public, max-age=60, s-maxage=300" }]
+    }
+  ]
+}
