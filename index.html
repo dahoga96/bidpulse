@@ -324,14 +324,14 @@ function derive(){
 
 /* ---------- stats ---------- */
 function drawStrip(){
-  const pot  = BOARDS.reduce((s,b)=>s+b.top,0);
+  const big  = BOARDS.reduce((m,b)=>b.top>m.top?b:m, {top:0});
   const cpcs = BOARDS.filter(b=>b.cpc).map(b=>b.cpc).sort((a,b)=>a-b);
   const med  = cpcs.length ? cpcs[Math.floor(cpcs.length/2)] : 0;
   document.getElementById("strip").innerHTML = [
     ["Boards tracked", BOARDS.length, ""],
     ["Taking bids", live, ""],
     ["Flatlined", flat, "warn"],
-    ["At #1 · all boards combined", money(pot), ""],
+    ["Biggest #1 bid", big.top ? money(big.top) : "—", ""],
     ["Median $/click", "$"+med.toFixed(2), ""],
   ].map(([l,v,cls])=>`<div class="stat ${cls}"><span>${l}</span><b>${v}</b></div>`).join("");
 }
