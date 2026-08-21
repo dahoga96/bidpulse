@@ -162,18 +162,15 @@ function extractTopClicks(text) {
   return m ? Number(m[1].replace(/,/g, "")) : null;
 }
 
-/** "3 minutes ago" / "just now" / "1 hour ago" / "2 days ago" -> hours */
+/** "3 minutes ago" / "just now" / "1 hour ago" / "5h ago" / "2d ago" -> hours */
 function extractLastBidHours(text) {
   const head = text.slice(0, 3000);
   if (/\bjust now\b/i.test(head)) return 0;
-  const m = head.match(/\b(\d+)\s*(second|minute|min|hour|hr|day)s?\s*ago\b/i);
+  const m = head.match(/\b(\d+)\s*(second|sec|s|minute|min|m|hour|hr|h|day|d)s?\s*ago\b/i);
   if (!m) return null;
   const n = Number(m[1]);
-  const unit = m[2].toLowerCase();
-  if (unit.startsWith("sec")) return n / 3600;
-  if (unit.startsWith("min")) return n / 60;
-  if (unit.startsWith("day")) return n * 24;
-  return n;
+  const u = m[2][0].toLowerCase();
+  return u === "s" ? n / 3600 : u === "m" ? n / 60 : u === "d" ? n * 24 : n;
 }
 
 /** Cheapest listing on the board = entry price. */
