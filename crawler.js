@@ -41,6 +41,11 @@ async function fetchListings() {
       redirect: "follow",
       signal: ctrl.signal,
     });
+    if (res.status === 429 || res.headers.get("x-vercel-mitigated") === "challenge") {
+      const err = new Error("rate-limited (HTTP " + res.status + ") — outbid.lol is challenging automated readers");
+      err.rateLimited = true;
+      throw err;
+    }
     if (!res.ok) throw new Error("HTTP " + res.status);
     const html = await res.text();
 
@@ -138,6 +143,12 @@ async function main() {
 }
 
 main().catch((err) => {
+  if (err.rateLimited) {
+    // Not a defect: back off politely and let the workflow re-deploy the last
+    // good data unchanged. The page shows how old its figures are.
+    console.warn("[skip]", err.message, "— keeping last good data");
+    process.exit(0);
+  }
   console.error("[fail]", err.message);
   process.exit(1); // failed crawl must not deploy — last good data stays live
 });

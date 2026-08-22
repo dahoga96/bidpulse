@@ -16,7 +16,10 @@ name: Crawl & deploy
 
 on:
   schedule:
-    - cron: "*/5 * * * *"
+    # Backed off from */5 on 2026-08-22: outbid.lol enabled Vercel challenge
+    # mode (429 for all non-browser clients). The crawler skips cleanly while
+    # blocked; restore */5 once they lift it and crawls succeed again.
+    - cron: "*/15 * * * *"
   push:
     branches: [main]
   workflow_dispatch:

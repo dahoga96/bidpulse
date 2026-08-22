@@ -150,6 +150,7 @@ footer a{color:var(--ink-2)}
   <div class="sample" id="sampleBanner">
     Sample data. Figures are placeholders until the crawler connects — see crawler.js.
   </div>
+  <div class="sample" id="staleBanner" hidden></div>
 </section>
 
 <!-- ============ SIDE CARD ============ -->
@@ -178,7 +179,7 @@ footer a{color:var(--ink-2)}
   <div>
     <h3>Where the numbers come from</h3>
     <p>outbid.lol publishes each top listing's lifetime paid total and lifetime click count. We read the public
-      page every 5 minutes — one request, nothing behind a login — and divide one by the other.</p>
+      page every few minutes — one request, nothing behind a login — and divide one by the other.</p>
   </div>
   <div>
     <h3>What $/click means here</h3>
@@ -302,9 +303,18 @@ async function boot(){
     DATA.count = data.count ?? data.listings.length;
     DATA_TS = data.updatedAt;
     SAMPLE = false;
-    const t = "Last read " + new Date(data.updatedAt).toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"}) + " · every 5 min";
+    const t = "Last read " + new Date(data.updatedAt).toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"});
     document.getElementById("updated").textContent = t.replace("Last read ","");
     document.getElementById("updatedFoot").textContent = t;
+    // honesty about staleness: outbid.lol sometimes challenges automated
+    // readers; when our data is old, say so instead of looking current
+    const ageMin = Math.round((Date.now() - data.updatedAt) / 60000);
+    const stale = document.getElementById("staleBanner");
+    if (stale && ageMin > 60) {
+      stale.hidden = false;
+      stale.textContent = "outbid.lol is currently rate-limiting automated readers — figures were last confirmed " +
+        (ageMin < 120 ? ageMin + " minutes" : Math.round(ageMin/60) + " hours") + " ago.";
+    } else if (stale) stale.hidden = true;
   }catch(err){
     console.warn("[bidpulse] using sample data —", err.message);
     DATA.count = DATA.listings.length;
