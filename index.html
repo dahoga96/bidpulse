@@ -56,8 +56,7 @@ h1 em{font-style:normal;color:var(--coral)}
 }
 
 /* ---------- two cards ---------- */
-.duo{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:30px 0 0}
-@media (max-width:720px){.duo{grid-template-columns:1fr}}
+.duo{margin:30px 0 0}
 .mini{background:var(--card);border-radius:18px;padding:16px 18px;box-shadow:0 1px 2px rgba(35,26,20,.04)}
 .mini h2{font-size:13.5px;font-weight:700;margin-bottom:10px}
 .mini h2 .dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--coral);margin-right:7px;vertical-align:1px}
@@ -153,12 +152,8 @@ footer a{color:var(--ink-2)}
   </div>
 </section>
 
-<!-- ============ SIDE CARDS ============ -->
+<!-- ============ SIDE CARD ============ -->
 <div class="duo">
-  <div class="mini">
-    <h2><span class="dot"></span>Latest bids</h2>
-    <ul id="feed"><li class="empty">No bids observed yet.</li></ul>
-  </div>
   <div class="mini">
     <h2>💸 Paid the most per click</h2>
     <ul id="worst"></ul>
@@ -228,20 +223,12 @@ let DATA = FALLBACK, DATA_TS = null;
 const esc   = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const money = n => "$" + (n >= 1000 ? Math.round(n).toLocaleString("en-US") : n);
 const cpcFmt= v => v == null ? "—" : "$" + (v < 0.1 ? v.toFixed(3) : v.toFixed(2));
-const ago   = ms => { const m = Math.round(ms/60000); return m < 1 ? "just now" : m < 60 ? m+"m ago" : m < 2880 ? Math.round(m/60)+"h ago" : Math.round(m/1440)+"d ago"; };
 
 /* deterministic pastel avatar color per name */
 const AVA = ["#e58e6d","#d9a86c","#8fb98a","#7fb3c9","#a394c9","#c98fae","#89a7d6","#b3a26e"];
 const avaColor = n => AVA[[...n].reduce((s,c)=>s+c.charCodeAt(0),0) % AVA.length];
 
-/* ---------- side cards ---------- */
-function drawFeed(){
-  const now = DATA_TS ?? Date.now();
-  const evs = (DATA.events||[]).filter(e=>now-e.t<=24*3600*1000).slice(-6).reverse();
-  document.getElementById("feed").innerHTML = evs.length
-    ? evs.map(e=>`<li><span class="who">${esc(e.n)}</span><span class="val"><b>+$${e.a.toLocaleString("en-US",{maximumFractionDigits:2})}</b> · ${ago(now-e.t)}</span></li>`).join("")
-    : `<li class="empty">No bids in the last 24 hours.</li>`;
-}
+/* ---------- side card ---------- */
 function drawWorst(){
   const worst = DATA.listings.filter(l=>l.cpc!=null).sort((a,b)=>b.cpc-a.cpc).slice(0,6);
   document.getElementById("worst").innerHTML = worst.map(l=>
@@ -325,7 +312,7 @@ async function boot(){
     document.getElementById("updatedFoot").textContent = "Sample data · crawler not connected";
   }
   if(!SAMPLE) document.getElementById("sampleBanner")?.remove();
-  drawStats(); drawFeed(); drawWorst(); render();
+  drawStats(); drawWorst(); render();
 }
 
 boot();
