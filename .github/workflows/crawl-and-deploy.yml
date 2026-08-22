@@ -1,4 +1,4 @@
-# Crawls every board, then publishes the site to Cloudflare Pages via wrangler
+# Crawls outbid.lol, then publishes the site to Cloudflare Pages via wrangler
 # DIRECT UPLOAD. Deliberately not using Cloudflare's git integration: a deploy
 # every 5 minutes is ~8,600 builds/month, and Pages' build system is capped at
 # 500/month on the free plan. Direct uploads don't count against that cap.
@@ -7,9 +7,10 @@
 #   CLOUDFLARE_API_TOKEN   — token with the "Cloudflare Pages: Edit" permission
 #   CLOUDFLARE_ACCOUNT_ID  — from the Cloudflare dashboard URL / right sidebar
 #
-# History note: history.json (sparkline data) is carried between runs by
-# publishing it with the site and re-downloading it at the start of the next
-# run. No commits back to the repo, no cache juggling.
+# State note: history.json (per-listing series) and listings.json (carries the
+# bid-events window) are pulled back from the live site at the start of each
+# run. No commits back to the repo, no cache juggling. The crawler exits
+# non-zero on a bad read, which aborts the deploy — last good data stays live.
 
 name: Crawl & deploy
 
@@ -43,41 +44,26 @@ jobs:
         with:
           node-version: 20
 
-      - name: Restore history from the live site
+      - name: Restore state from the live site
         run: |
           curl -fsS --max-time 20 "https://${PROJECT_NAME}.pages.dev/history.json?t=$(date +%s)" -o history.json \
-            || echo "no previous history.json (first deploy?) — sparklines start fresh"
+            || echo "no previous history.json (first deploy?)"
+          curl -fsS --max-time 20 "https://${PROJECT_NAME}.pages.dev/listings.json?t=$(date +%s)" -o listings.json \
+            || echo "no previous listings.json (first deploy?)"
 
-      - name: Crawl boards
+      - name: Crawl outbid.lol
         run: node crawler.js
 
       - name: Assemble site
         run: |
           mkdir -p dist
-          cp index.html _headers boards.json history.json dist/
+          cp index.html _headers listings.json history.json dist/
 
       - name: Ensure Pages project exists
         run: npx --yes wrangler pages project create "$PROJECT_NAME" --production-branch=main 2>/dev/null || true
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-
-      # The submission endpoint (functions/api/submit.js) commits accepted
-      # boards to this repo. It needs a fine-grained GitHub PAT (Contents
-      # read/write, this repo only) stored as the BOARD_SUBMIT_TOKEN Actions
-      # secret; this step mirrors it into the Pages project. Until the secret
-      # exists, /api/submit answers 503 and everything else still works.
-      - name: Sync submission token to Pages
-        env:
-          BOARD_SUBMIT_TOKEN: ${{ secrets.BOARD_SUBMIT_TOKEN }}
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        run: |
-          if [ -n "$BOARD_SUBMIT_TOKEN" ]; then
-            printf '%s' "$BOARD_SUBMIT_TOKEN" | npx --yes wrangler pages secret put BOARD_SUBMIT_TOKEN --project-name "$PROJECT_NAME"
-          else
-            echo "BOARD_SUBMIT_TOKEN not set — /api/submit will answer 503 until it is"
-          fi
 
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/wrangler-action@v3

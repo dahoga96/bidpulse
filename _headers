@@ -1,5 +1,5 @@
-# Cloudflare Pages headers (replaces vercel.json)
-/boards.json
+# Cloudflare Pages headers
+/listings.json
   Cache-Control: public, max-age=60, s-maxage=300
 
 /history.json

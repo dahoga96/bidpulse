@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Live rate card for pay-to-rank leaderboards. Real cost per click, and which boards have flatlined.",
+  "description": "Every outbid.lol listing with click data, ranked by what a click actually cost.",
   "scripts": {
     "dev": "npx --yes serve . -l 3000",
     "crawl": "node crawler.js",

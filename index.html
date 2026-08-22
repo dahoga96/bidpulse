@@ -3,448 +3,293 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>BIDPULSE — which pay-to-rank boards still have a pulse</title>
-<meta name="description" content="Live rate card for every pay-to-rank leaderboard. Real cost per click, real bid activity, and which boards have flatlined.">
+<title>BIDPULSE — who got the best deal on outbid.lol</title>
+<meta name="description" content="Every outbid.lol listing with click data, ranked by what a click actually cost. Lifetime dollars over lifetime clicks — not who paid the most.">
 <link rel="canonical" href="https://bidpulse.dev/">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 :root{
-  --bg:#ffffff;
-  --ink:#0b0b0b;
-  --ink-2:#52514e;
-  --muted:#898781;
-  --line:#e5e4df;
-  --line-strong:#c3c2b7;
-  --wash:#f7f7f5;
-  --blue:#2a78d6;        /* links + sparklines */
-  --good:#0ca30c;        /* status dot: taking bids */
-  --good-text:#006300;   /* cheap $/click */
-  --warn:#c98500;        /* status dot: cooling */
-  --bad:#d03b3b;         /* status dot: flatlined, expensive $/click */
-  --sans:system-ui,-apple-system,"Segoe UI",sans-serif;
+  --bg:#faf6f0;
+  --card:#ffffff;
+  --ink:#231a14;
+  --ink-2:#6f6258;
+  --muted:#a3968b;
+  --line:#efe7dd;
+  --coral:#f0664a;
+  --coral-soft:#fdeee8;
+  --coral-line:#f6cfc2;
+  --chip:#2a201a;
+  --good:#0f8a3d;
+  --sans:'Figtree',system-ui,-apple-system,"Segoe UI",sans-serif;
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html{-webkit-text-size-adjust:100%}
 body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.5}
-a{color:var(--blue)}
-.wrap{max-width:1100px;margin:0 auto;padding:0 20px}
-.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+a{color:inherit}
+.wrap{max-width:980px;margin:0 auto;padding:0 20px}
+.num{font-variant-numeric:tabular-nums}
 
 /* ---------- header ---------- */
-.hero{padding:40px 0 8px}
-h1{font-size:clamp(24px,4vw,34px);font-weight:700;letter-spacing:-.02em;line-height:1.15;max-width:26ch}
-.sub{margin-top:10px;max-width:62ch;color:var(--ink-2);font-size:15.5px}
+.top{display:flex;justify-content:space-between;align-items:center;padding:22px 0 6px}
+.mark{font-weight:800;font-size:18px;letter-spacing:-.02em;text-decoration:none}
+.mark span{color:var(--coral)}
+.top .src{font-size:13px;color:var(--muted)}
+.top .src a{color:var(--ink-2);text-decoration:none;border-bottom:1px solid var(--line)}
 
-/* ---------- stats row ---------- */
-.strip-in{display:flex;flex-wrap:wrap;gap:8px 40px;padding:22px 0 18px;border-bottom:1px solid var(--line)}
-.stat span{display:block;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
-.stat b{font-size:19px;font-weight:650;font-variant-numeric:tabular-nums}
-.stat.warn b{color:var(--bad)}
-
-/* ---------- 2h activity chart ---------- */
-.ecg{margin:22px 0 0;position:relative}
-.ecg-head{display:flex;justify-content:space-between;align-items:baseline;font-size:12px;color:var(--muted);margin-bottom:6px}
-.ecg-head b{font-weight:500;color:var(--ink-2)}
-.ecg svg{display:block;width:100%;height:64px}
-.baseline{stroke:var(--line-strong);stroke-width:1}
-.bar{fill:var(--blue)}
-.axis{fill:var(--muted);font-size:10px;font-family:var(--sans)}
-.ecg-foot{font-size:12.5px;color:var(--ink-2);margin-top:6px}
-.tip{
-  position:absolute;display:none;z-index:10;pointer-events:none;white-space:nowrap;
-  background:#fff;border:1px solid var(--line-strong);border-radius:6px;
-  padding:7px 10px;font-size:12.5px;box-shadow:0 2px 10px rgba(0,0,0,.08);
+/* ---------- hero ---------- */
+.hero{text-align:center;padding:26px 0 8px}
+.pill{
+  display:inline-flex;align-items:center;gap:8px;background:#f3ece3;border-radius:999px;
+  padding:7px 16px;font-size:13px;color:var(--ink-2);
 }
-.tip b{font-weight:600}
-.tip .when{color:var(--muted);font-size:11.5px;margin-top:3px}
+.pill .dot{width:7px;height:7px;border-radius:50%;background:var(--good)}
+h1{font-size:clamp(30px,5.4vw,46px);font-weight:800;letter-spacing:-.03em;line-height:1.08;margin-top:18px}
+h1 em{font-style:normal;color:var(--coral)}
+.sub{margin:14px auto 0;max-width:56ch;color:var(--ink-2);font-size:15.5px}
+.sub strong{color:var(--ink);font-weight:600}
 
 .sample{
-  margin-top:20px;border:1px solid var(--bad);border-left-width:4px;
-  padding:10px 14px;font-size:13px;color:var(--bad);background:#fff;
+  margin:20px auto 0;max-width:640px;border:1px solid var(--coral);border-radius:12px;
+  padding:10px 16px;font-size:13px;color:var(--coral);background:var(--coral-soft);
 }
+
+/* ---------- two cards ---------- */
+.duo{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:30px 0 0}
+@media (max-width:720px){.duo{grid-template-columns:1fr}}
+.mini{background:var(--card);border-radius:18px;padding:16px 18px;box-shadow:0 1px 2px rgba(35,26,20,.04)}
+.mini h2{font-size:13.5px;font-weight:700;margin-bottom:10px}
+.mini h2 .dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--coral);margin-right:7px;vertical-align:1px}
+.mini ul{list-style:none}
+.mini li{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:6px 0;border-top:1px solid var(--line);font-size:13.5px}
+.mini li:first-child{border-top:0}
+.mini .who{font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mini .who small{font-weight:400;color:var(--muted)}
+.mini .val{color:var(--ink-2);white-space:nowrap}
+.mini .val b{color:var(--coral);font-weight:700}
+.mini .empty{color:var(--muted);font-size:13.5px;padding:8px 0}
 
 /* ---------- controls ---------- */
-.controls{margin:34px 0 0;display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding-bottom:12px}
+.controls{margin:30px 0 14px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .chip{
-  font-family:inherit;font-size:13px;background:#fff;color:var(--ink-2);
-  border:1px solid var(--line-strong);border-radius:6px;padding:6px 12px;cursor:pointer;
+  font-family:inherit;font-size:13px;font-weight:600;background:var(--card);color:var(--ink-2);
+  border:1px solid var(--line);border-radius:999px;padding:7px 14px;cursor:pointer;
 }
-.chip:hover{border-color:var(--ink-2);color:var(--ink)}
-.chip[aria-pressed="true"]{background:var(--ink);color:#fff;border-color:var(--ink)}
+.chip:hover{color:var(--ink)}
+.chip[aria-pressed="true"]{background:var(--coral);color:#fff;border-color:var(--coral)}
 .search{
-  flex:1 1 200px;min-width:150px;margin-left:auto;
-  font-family:inherit;font-size:13.5px;color:var(--ink);
-  background:#fff;border:1px solid var(--line-strong);border-radius:6px;padding:7px 11px;
+  flex:1 1 180px;min-width:150px;margin-left:auto;font-family:inherit;font-size:13.5px;color:var(--ink);
+  background:var(--card);border:1px solid var(--line);border-radius:999px;padding:8px 15px;
 }
 .search::placeholder{color:var(--muted)}
+.search:focus{outline:2px solid var(--coral);outline-offset:-1px}
 
-/* ---------- table ---------- */
-.tablewrap{overflow-x:auto}
-table{width:100%;border-collapse:collapse;font-size:13.5px;min-width:840px}
-thead th{
-  text-align:left;font-weight:500;font-size:11px;letter-spacing:.07em;text-transform:uppercase;
-  color:var(--muted);padding:10px 10px;border-bottom:1px solid var(--line-strong);
-  cursor:pointer;user-select:none;white-space:nowrap;background:var(--bg);
-  position:sticky;top:0;z-index:5;
+/* ---------- ranked list ---------- */
+.row{
+  display:flex;align-items:center;gap:14px;background:var(--card);border-radius:18px;
+  padding:14px 18px;margin-top:10px;box-shadow:0 1px 2px rgba(35,26,20,.04);
 }
-thead th:hover{color:var(--ink)}
-thead th .car{opacity:.4;margin-left:4px}
-thead th[data-active]{color:var(--ink)}
-thead th[data-active] .car{opacity:1}
-tbody tr{border-bottom:1px solid var(--line)}
-tbody tr:hover{background:var(--wash)}
-td{padding:11px 10px;vertical-align:middle}
-.board{min-width:220px}
-.board a{font-weight:600;font-size:14.5px;color:var(--ink);text-decoration:none}
-.board a:hover{text-decoration:underline;text-underline-offset:3px}
-.board p{font-size:12.5px;color:var(--muted);margin-top:1px;line-height:1.35}
-.dim{color:var(--ink-2)}
-.cpc{font-weight:650}
-.cpc.bad{color:var(--bad)}
-.orig{
-  font-size:10px;letter-spacing:.05em;color:var(--ink-2);
-  border:1px solid var(--line-strong);border-radius:4px;padding:1px 5px;margin-left:7px;vertical-align:1px;
+.row.podium{background:var(--coral-soft);border:1px solid var(--coral-line)}
+.rankchip{
+  flex:0 0 auto;width:40px;height:40px;border-radius:50%;background:var(--chip);color:#fff;
+  display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;
 }
-.status{font-size:12.5px;white-space:nowrap;color:var(--ink)}
-.status::before{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:7px;vertical-align:0}
-.s-live::before{background:var(--good)}
-.s-cooling::before{background:var(--warn)}
-.s-flat::before{background:var(--bad)}
-.spark{width:88px;height:26px;display:block}
-.spark path{fill:none;stroke:var(--blue);stroke-width:1.4;stroke-linejoin:round}
+.row.podium .rankchip{background:var(--coral)}
+.avatar{
+  flex:0 0 auto;width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;
+  font-weight:800;font-size:17px;color:#fff;
+}
+.body{flex:1 1 auto;min-width:0}
+.body .name{font-weight:700;font-size:15.5px;text-decoration:none}
+.body .name:hover{color:var(--coral)}
+.body .desc{color:var(--ink-2);font-size:13px;line-height:1.45;margin-top:1px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.body .meta{color:var(--muted);font-size:12px;margin-top:4px}
+.body .meta b{color:var(--ink-2);font-weight:600}
+.cpc{flex:0 0 auto;text-align:right;white-space:nowrap}
+.cpc b{display:block;color:var(--coral);font-size:19px;font-weight:800;letter-spacing:-.01em}
+.cpc span{font-size:11px;color:var(--muted)}
+.divider{display:flex;align-items:center;gap:14px;margin:20px 0 8px;color:var(--muted)}
+.divider::before,.divider::after{content:"";flex:1;border-top:1px solid var(--coral-line)}
+.divider i{font-style:normal;font-size:11px;font-weight:700;letter-spacing:.12em;background:var(--coral-soft);border:1px solid var(--coral-line);border-radius:999px;padding:4px 12px;color:var(--coral)}
+.noresult{color:var(--muted);padding:26px 6px;text-align:center}
 
-/* ---------- submit ---------- */
-.submit{margin:52px 0 0;border:1px solid var(--line);border-radius:8px;padding:24px 22px;background:var(--wash)}
-.submit h2{font-size:19px;font-weight:650;letter-spacing:-.01em}
-.submit p{color:var(--ink-2);font-size:14px;margin-top:6px;max-width:56ch}
-.form{display:flex;flex-wrap:wrap;gap:10px;margin-top:16px}
-.form input{
-  flex:1 1 220px;font-family:inherit;font-size:13.5px;color:var(--ink);
-  background:#fff;border:1px solid var(--line-strong);border-radius:6px;padding:9px 12px;
+/* ---------- tail note + method ---------- */
+.note-card{
+  margin:26px 0 0;background:#f3ece3;border-radius:18px;padding:16px 20px;font-size:13.5px;color:var(--ink-2);
 }
-.btn{
-  font-family:inherit;font-size:13.5px;font-weight:600;
-  background:var(--ink);color:#fff;border:1px solid var(--ink);border-radius:6px;
-  padding:9px 16px;cursor:pointer;text-decoration:none;display:inline-block;
-}
-.btn:hover{background:#333;border-color:#333}
-.note{font-size:12.5px;color:var(--muted);margin-top:12px}
-.note.ok{color:var(--good-text)}
-
-/* ---------- method + footer ---------- */
-.method{margin:48px 0 0;display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:26px 34px}
-.method h3{font-size:12px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink);margin-bottom:6px;font-weight:600}
-.method p{font-size:13.5px;color:var(--ink-2);line-height:1.55}
+.note-card b{color:var(--ink)}
+.method{margin:38px 0 0;display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px}
+.method div{background:var(--card);border-radius:18px;padding:18px 20px}
+.method h3{font-size:13px;font-weight:700;margin-bottom:6px}
+.method p{font-size:13px;color:var(--ink-2);line-height:1.55}
 footer{
-  margin:44px 0 56px;padding-top:16px;border-top:1px solid var(--line);
+  margin:40px 0 50px;padding-top:18px;border-top:1px solid var(--line);
   font-size:12.5px;color:var(--muted);display:flex;flex-wrap:wrap;gap:12px;justify-content:space-between;
 }
-@media (max-width:640px){
-  .hero{padding:28px 0 6px}
-  .strip-in{gap:8px 24px}
-}
-:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+footer a{color:var(--ink-2)}
+:focus-visible{outline:2px solid var(--coral);outline-offset:2px}
 </style>
 </head>
 <body>
 
 <div class="wrap">
 
-<!-- ============ HEADER ============ -->
-<header class="hero">
-  <h1>The live rate card for pay-to-rank boards.</h1>
-  <p class="sub">
-    Every pay-to-rank leaderboard publishes its bids and its click counts. We divide one by the other,
-    every 5 minutes: what a slot actually costs per click, and which boards stopped taking bids hours ago.
-  </p>
+<header class="top">
+  <a class="mark" href="/">bid<span>pulse</span></a>
+  <span class="src">data: <a href="https://outbid.lol" target="_blank" rel="noopener nofollow">outbid.lol</a> · <span id="updated">—</span></span>
 </header>
 
-<!-- ============ STATS ============ -->
-<div class="strip-in" id="strip"></div>
-
-<!-- bid activity, last 2 hours -->
-<div class="ecg">
-  <div class="ecg-head">
-    <span>Bid activity across all boards · last 2h</span>
-    <b id="ecgReading">—</b>
+<!-- ============ HERO ============ -->
+<section class="hero">
+  <span class="pill"><span class="dot"></span><span id="pillText">— listings · $— sitting on the board</span></span>
+  <h1>Who actually got the <em>best deal</em> on outbid.lol?</h1>
+  <p class="sub">
+    The leaderboard ranks by who paid the most. We rank by <strong>what a click actually cost</strong> —
+    lifetime dollars over lifetime clicks, for every listing outbid.lol publishes click counts on.
+  </p>
+  <div class="sample" id="sampleBanner">
+    Sample data. Figures are placeholders until the crawler connects — see crawler.js.
   </div>
-  <svg id="ecgSvg" viewBox="0 0 1000 64" preserveAspectRatio="none" aria-label="Bids across all tracked boards over the last 2 hours; hover a bar to see the board"></svg>
-  <div class="tip" id="ecgTip"></div>
-  <div class="ecg-foot" id="ecgFoot">—</div>
-</div>
+</section>
 
-<div class="sample" id="sampleBanner">
-  Sample data. Figures below are placeholders until the crawler is pointed at production — see crawler.js.
+<!-- ============ SIDE CARDS ============ -->
+<div class="duo">
+  <div class="mini">
+    <h2><span class="dot"></span>Latest bids</h2>
+    <ul id="feed"><li class="empty">No bids observed yet.</li></ul>
+  </div>
+  <div class="mini">
+    <h2>💸 Paid the most per click</h2>
+    <ul id="worst"></ul>
+  </div>
 </div>
 
 <!-- ============ CONTROLS ============ -->
 <div class="controls">
-  <button class="chip" data-filter="all" aria-pressed="true">All boards</button>
-  <button class="chip" data-filter="live" aria-pressed="false">Taking bids</button>
-  <button class="chip" data-filter="cooling" aria-pressed="false">Cooling</button>
-  <button class="chip" data-filter="flat" aria-pressed="false">Flatlined</button>
-  <input class="search" id="search" type="search" placeholder="Filter by name or category…" aria-label="Filter boards">
+  <button class="chip" data-sort="best" aria-pressed="true">Best deal</button>
+  <button class="chip" data-sort="worst" aria-pressed="false">Worst deal</button>
+  <button class="chip" data-sort="paid" aria-pressed="false">Biggest spend</button>
+  <button class="chip" data-sort="clicks" aria-pressed="false">Most clicks</button>
+  <input class="search" id="search" type="search" placeholder="Filter listings…" aria-label="Filter listings">
 </div>
 
-<div class="tablewrap">
-<table>
-  <thead>
-    <tr>
-      <th data-sort="name">Board <span class="car">↕</span></th>
-      <th data-sort="cat">Ranks <span class="car">↕</span></th>
-      <th data-sort="top" data-active class="num">#1 price <span class="car">↕</span></th>
-      <th data-sort="clicks" class="num">Clicks on #1 <span class="car">↕</span></th>
-      <th data-sort="cpc" class="num">$ / click <span class="car">↕</span></th>
-      <th data-sort="last" class="num">Last bid <span class="car">↕</span></th>
-      <th>Pulse</th>
-      <th data-sort="last">Status <span class="car">↕</span></th>
-    </tr>
-  </thead>
-  <tbody id="rows"></tbody>
-</table>
-</div>
+<div id="rows"></div>
 
-<!-- ============ SUBMIT ============ -->
-<section class="submit" id="claim">
-  <h2>Running a board? Get it tracked.</h2>
-  <p>Listing is free and automatic — the index is worthless if it is incomplete. We read the page when you
-    submit it; if we find live bid figures, it goes straight into the index and gets re-read every
-    5 minutes like everything else.</p>
-  <form class="form" id="submitForm">
-    <input name="url" type="url" required placeholder="https://yourboard.lol" aria-label="Board URL">
-    <input name="cat" type="text" required placeholder="What does it rank? e.g. iOS apps" aria-label="What the board ranks">
-    <input name="website" type="text" tabindex="-1" autocomplete="off" aria-hidden="true" style="display:none">
-    <button class="btn" type="submit">Add my board</button>
-  </form>
-  <p class="note" id="formNote">Checked automatically. Boards that stop parsing are flagged, not deleted.</p>
-</section>
+<div class="note-card" id="tailNote"></div>
 
 <!-- ============ METHOD ============ -->
 <section class="method">
   <div>
     <h3>Where the numbers come from</h3>
-    <p>Every board publishes its leaderboard as public HTML — bid amounts and, on most of them, a click
-      counter per listing. We read the page. Nothing private, nothing scraped behind a login.</p>
+    <p>outbid.lol publishes each top listing's lifetime paid total and lifetime click count. We read the public
+      page every 5 minutes — one request, nothing behind a login — and divide one by the other.</p>
   </div>
   <div>
-    <h3>How $ / click is calculated</h3>
-    <p>The #1 listing's total bid divided by the clicks that listing reports. It is the cheapest honest
-      comparison across boards, and it is usually much worse than the operator implies.</p>
+    <h3>What $/click means here</h3>
+    <p>Lifetime dollars over lifetime clicks. It is not the "clicks" counter on outbid.lol's rows (that one
+      resets with bids). Lower is a better deal. It says nothing about what those clicks were worth to the buyer.</p>
   </div>
   <div>
-    <h3>What flatlined means</h3>
-    <p>No new bid in 12 hours. A board with no bidding has no audience, which means a slot on it delivers
-      nothing regardless of what it costs.</p>
-  </div>
-  <div>
-    <h3>Corrections</h3>
-    <p>Operators can dispute any figure and we will re-read the page and publish the correction. We do not
-      take money to change a number.</p>
+    <h3>What's missing</h3>
+    <p>outbid.lol only publishes click counts for its top spenders — the long tail of the board can't be
+      deal-ranked. If a figure looks wrong, it gets re-read and corrected; we don't take money to change a number.</p>
   </div>
 </section>
 
 <footer>
-  <span>BIDPULSE · independent · not affiliated with any board listed</span>
+  <span>BIDPULSE · independent · not affiliated with outbid.lol</span>
   <span>Built by <a href="https://x.com/dahoga96" target="_blank" rel="noopener">@dahoga96</a></span>
-  <span id="updated">—</span>
+  <span id="updatedFoot">—</span>
 </footer>
 
 </div>
 
 <script>
 /* ============================================================
-   DATA
-   Board names and categories are real (as of 21 Aug 2026).
-   All metrics are PLACEHOLDER until crawler.js populates them.
+   Sample fallback — replaced by listings.json on boot.
    ============================================================ */
-let SAMPLE = true;   // flipped to false automatically once boards.json loads
+let SAMPLE = true;
 
-const FALLBACK = [
-  // name, url, cat, top(#1 total), entry(min bid), clicks on #1, hours since last bid, original?
-  {n:"outbid.lol",     u:"https://outbid.lol",       c:"Startups & websites", top:10002, entry:5, clicks:9391, last:0.4, orig:true},
-  {n:"topseos.lol",    u:"https://topseos.lol",      c:"SEO agencies & tools", top:13, entry:1, clicks:41, last:0.1},
-  {n:"xbid.lol",       u:"https://xbid.lol",         c:"X accounts",          top:88,  entry:1, clicks:210, last:0.6},
-  {n:"topapp.lol",     u:"https://topapp.lol",       c:"iOS apps",            top:142, entry:1, clicks:388, last:1.2},
-  {n:"aithrone.lol",   u:"https://aithrone.lol",     c:"AI startups (72h)",   top:305, entry:5, clicks:602, last:0.8},
-  {n:"coinup.lol",     u:"https://coinup.lol",       c:"Crypto coins (BTC)",  top:640, entry:11, clicks:430, last:2.1},
-  {n:"uprank.lol",     u:"https://uprank.lol",       c:"Websites",            top:57,  entry:1, clicks:190, last:1.9},
-  {n:"bidup.lol",      u:"https://bidup.lol",        c:"Websites",            top:64,  entry:1, clicks:150, last:3.4},
-  {n:"puremoney.lol",  u:"https://puremoney.lol",    c:"Websites",            top:22,  entry:1, clicks:88,  last:4.2},
-  {n:"outbid.to",      u:"https://outbid.to",        c:"Websites",            top:180, entry:2, clicks:540, last:2.8},
-  {n:"eu-outbid.lol",  u:"https://eu-outbid.lol",    c:"European startups",   top:31,  entry:2, clicks:74,  last:2.0},
-  {n:"topnewsletters.lol",u:"https://topnewsletters.lol",c:"Newsletters",     top:46,  entry:1, clicks:129, last:5.5},
-  {n:"overbid.lol",    u:"https://overbid.lol",      c:"People",              top:71,  entry:1, clicks:255, last:6.1},
-  {n:"hotseat.fyi",    u:"https://hotseat.fyi",      c:"People & agents",     top:19,  entry:1, clicks:63,  last:5.9},
-  {n:"xme.lol",        u:"https://xme.lol",          c:"X profiles",          top:24,  entry:1, clicks:96,  last:7.2},
-  {n:"launcharena.dev",u:"https://launcharena.dev",  c:"AI startups",         top:35,  entry:1, clicks:118, last:8.4},
-  {n:"outbids.lol",    u:"https://outbids.lol",      c:"Websites",            top:15,  entry:1, clicks:37,  last:9.1},
-  {n:"bidboard.lol",   u:"https://bidboard.lol",     c:"Websites",            top:12,  entry:1, clicks:29,  last:11.4},
-  {n:"rankbid.lol",    u:"https://rankbid.lol",      c:"Websites (budget)",   top:9,   entry:1, clicks:44,  last:13.0},
-  {n:"outoutbid.lol",  u:"https://outoutbid.lol",    c:"Boards (directory)",  top:5,   entry:1, clicks:26,  last:14.5},
-  {n:"biddirectory.lol",u:"https://biddirectory.lol",c:"Boards (directory)",  top:6,   entry:1, clicks:21,  last:16.0},
-  {n:"vibewar.lol",    u:"https://vibewar.lol",      c:"Vibe-coded apps",     top:8,   entry:1, clicks:33,  last:18.2},
-  {n:"builtwithai.lol",u:"https://builtwithai.lol",  c:"AI-built products",   top:7,   entry:1, clicks:19,  last:19.6},
-  {n:"bidtop.lol",     u:"https://bidtop.lol",       c:"Websites",            top:0,   entry:1, clicks:0,   last:21.0},
-  {n:"outbidme.lol",   u:"https://outbidme.lol",     c:"People",              top:4,   entry:1, clicks:12,  last:23.4},
-  {n:"maxbid.lol",     u:"https://maxbid.lol",       c:"Websites",            top:5,   entry:1, clicks:14,  last:25.1},
-  {n:"timebid.lol",    u:"https://timebid.lol",      c:"Time slots",          top:11,  entry:1, clicks:27,  last:26.8},
-  {n:"ranky.lol",      u:"https://ranky.lol",        c:"Websites",            top:3,   entry:1, clicks:9,   last:29.3},
-  {n:"raiseup.lol",    u:"https://raiseup.lol",      c:"Websites",            top:4,   entry:1, clicks:11,  last:31.0},
-  {n:"undbid.com",     u:"https://undbid.com",       c:"Reverse bidding",     top:6,   entry:1, clicks:16,  last:33.5},
-];
+const FALLBACK = {
+  boardCount: 900, boardTotal: 130000,
+  listings: [
+    {n:"trycodus.com",  dn:"Codus", u:"https://trycodus.com",  d:"Sample listing.", paid:1026, clicks:14365, cpc:0.0714, rank:26},
+    {n:"post-bridge.com",dn:"Post Bridge",u:"https://post-bridge.com",d:"Sample listing.", paid:420, clicks:1122, cpc:0.3743, rank:40},
+    {n:"joni.ai",       dn:"JONI", u:"https://joni.ai",        d:"Sample listing.", paid:14013, clicks:8619, cpc:1.6258, rank:1},
+    {n:"otio.ai",       dn:"Otio", u:"https://otio.ai",        d:"Sample listing.", paid:3000, clicks:230, cpc:13.04, rank:12},
+  ],
+  events: [],
+};
 
-let BOARDS = FALLBACK;
-let EVENTS = [], DATA_TS = null;
-let live = 0, flat = 0;
+let DATA = FALLBACK, DATA_TS = null;
 
-/* ---------- derive ---------- */
-const statusOf = h => h == null ? "flat" : h < 4 ? "live" : h < 12 ? "cooling" : "flat";
-const labelOf  = s => s==="live" ? "Taking bids" : s==="cooling" ? "Cooling" : "Flatlined";
-const money    = (n,c) => (c||"$") + (n >= 1000 ? n.toLocaleString("en-US") : n);
-const ago      = h => h == null ? "—" : h < 1 ? Math.round(h*60)+"m" : h < 48 ? Math.round(h)+"h" : Math.round(h/24)+"d";
-const esc      = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+/* ---------- helpers ---------- */
+const esc   = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const money = n => "$" + (n >= 1000 ? Math.round(n).toLocaleString("en-US") : n);
+const cpcFmt= v => v == null ? "—" : "$" + (v < 0.1 ? v.toFixed(3) : v.toFixed(2));
+const ago   = ms => { const m = Math.round(ms/60000); return m < 1 ? "just now" : m < 60 ? m+"m ago" : m < 2880 ? Math.round(m/60)+"h ago" : Math.round(m/1440)+"d ago"; };
 
-function derive(){
-  BOARDS.forEach(b=>{
-    b.top    = b.top ?? 0;
-    b.clicks = b.clicks ?? 0;
-    b.cpc = b.clicks > 0 && b.top > 0 ? b.top / b.clicks : null;
-    b.s   = statusOf(b.last);
-    // crawler supplies a real series from history.json; synthesise only as fallback
-    if(!Array.isArray(b.series) || !b.series.length){
-      b.series = Array.from({length:24},(_,i)=>{
-        const recency = i/23;
-        const decay   = Math.max(0, 1 - (b.last ?? 48)/26);
-        const base    = decay * (0.35 + 0.65*recency);
-        const spike   = Math.sin(i*1.7 + b.n.length) * 0.28 * decay;
-        return Math.max(0.02, base + spike);
-      });
-    }
-  });
-  live = BOARDS.filter(b=>b.s==="live").length;
-  flat = BOARDS.filter(b=>b.s==="flat").length;
-}
+/* deterministic pastel avatar color per name */
+const AVA = ["#e58e6d","#d9a86c","#8fb98a","#7fb3c9","#a394c9","#c98fae","#89a7d6","#b3a26e"];
+const avaColor = n => AVA[[...n].reduce((s,c)=>s+c.charCodeAt(0),0) % AVA.length];
 
-/* ---------- stats ---------- */
-function drawStrip(){
-  const big  = BOARDS.reduce((m,b)=>b.top>m.top?b:m, {top:0});
-  const cpcs = BOARDS.filter(b=>b.cpc).map(b=>b.cpc).sort((a,b)=>a-b);
-  const med  = cpcs.length ? cpcs[Math.floor(cpcs.length/2)] : 0;
-  document.getElementById("strip").innerHTML = [
-    ["Boards tracked", BOARDS.length, ""],
-    ["Taking bids", live, ""],
-    ["Flatlined", flat, "warn"],
-    ["Biggest #1 bid", big.top ? money(big.top, big.cur) : "—", ""],
-    ["Median $/click", "$"+med.toFixed(2), ""],
-  ].map(([l,v,cls])=>`<div class="stat ${cls}"><span>${l}</span><b>${v}</b></div>`).join("");
-}
-
-/* ---------- 2h activity ----------
-   One bar per crawl tick where the top bid rose on any board; hover names
-   the board(s) and amounts. Bar height is sqrt-scaled so a $10 bid stays
-   visible next to a $1,000 one. */
-function drawECG(){
-  const W=1000,H=64,pad=4,MS=2*3600*1000;
+/* ---------- side cards ---------- */
+function drawFeed(){
   const now = DATA_TS ?? Date.now();
-  const evs = EVENTS.filter(e=>e.t<=now && now-e.t<=MS);
-
-  const byT=new Map();
-  for(const e of evs){ if(!byT.has(e.t)) byT.set(e.t,[]); byT.get(e.t).push(e); }
-  const ticks=[...byT.entries()].map(([t,list])=>({t,list,total:list.reduce((s,e)=>s+e.a,0)}));
-  const maxA=Math.max(...ticks.map(g=>g.total),1);
-  const xOf=t=>pad+(W-pad*2)*(1-(now-t)/MS);
-
-  const bars=ticks.map(g=>{
-    const h=6+(H-pad*2-10)*Math.sqrt(g.total/maxA);
-    return `<rect class="bar" x="${(xOf(g.t)-3).toFixed(1)}" y="${(H-pad-h).toFixed(1)}" width="6" height="${h.toFixed(1)}" rx="2"/>`;
-  }).join("");
-
-  document.getElementById("ecgSvg").innerHTML =
-    `<line class="baseline" x1="0" y1="${H-pad}" x2="${W}" y2="${H-pad}"/>
-     <text class="axis" x="${pad}" y="11">2h ago</text>
-     <text class="axis" x="${W-pad}" y="11" text-anchor="end">now</text>` + bars;
-
-  const total=ticks.reduce((s,g)=>s+g.total,0);
-  document.getElementById("ecgReading").textContent = evs.length
-    ? `${evs.length} bid${evs.length>1?"s":""} · +$${total.toLocaleString("en-US",{maximumFractionDigits:2})} in 2h`
-    : "No bids in the last 2 hours";
-  document.getElementById("ecgFoot").textContent =
-    `${flat} boards have taken no bid in 12 hours. A slot on those delivers nothing at any price.`;
-
-  wireTip(ticks,xOf,now);
+  const evs = (DATA.events||[]).filter(e=>now-e.t<=24*3600*1000).slice(-6).reverse();
+  document.getElementById("feed").innerHTML = evs.length
+    ? evs.map(e=>`<li><span class="who">${esc(e.n)}</span><span class="val"><b>+$${e.a.toLocaleString("en-US",{maximumFractionDigits:2})}</b> · ${ago(now-e.t)}</span></li>`).join("")
+    : `<li class="empty">No bids in the last 24 hours.</li>`;
+}
+function drawWorst(){
+  const worst = DATA.listings.filter(l=>l.cpc!=null).sort((a,b)=>b.cpc-a.cpc).slice(0,6);
+  document.getElementById("worst").innerHTML = worst.map(l=>
+    `<li><span class="who">${esc(l.n)} <small>paid ${money(l.paid)}</small></span><span class="val"><b>${cpcFmt(l.cpc)}</b>/click</span></li>`
+  ).join("");
 }
 
-function wireTip(ticks,xOf,now){
-  const svg=document.getElementById("ecgSvg"), tip=document.getElementById("ecgTip"), box=svg.parentElement;
-  svg.onmousemove=ev=>{
-    if(!ticks.length) return;
-    const r=svg.getBoundingClientRect();
-    const vx=(ev.clientX-r.left)/r.width*1000;
-    let best=null,bd=Infinity;
-    for(const g of ticks){ const d=Math.abs(xOf(g.t)-vx); if(d<bd){bd=d;best=g;} }
-    if(bd>40){ tip.style.display="none"; return; }
-    const mins=Math.round((now-best.t)/60000);
-    const when=mins<60?`${mins}m ago`:`${(mins/60).toFixed(1).replace(/\.0$/,"")}h ago`;
-    tip.innerHTML=best.list.map(e=>`<div><b>${esc(e.n)}</b> +$${e.a.toLocaleString("en-US",{maximumFractionDigits:2})}</div>`).join("")
-      +`<div class="when">${when}</div>`;
-    tip.style.display="block";
-    const br=box.getBoundingClientRect();
-    let left=ev.clientX-br.left+14;
-    if(left+tip.offsetWidth>br.width) left=ev.clientX-br.left-tip.offsetWidth-14;
-    tip.style.left=left+"px";
-    tip.style.top=(ev.clientY-br.top-tip.offsetHeight-8)+"px";
-  };
-  svg.onmouseleave=()=>{ tip.style.display="none"; };
-}
-
-/* ---------- sparkline ----------
-   One hue for all rows: the line shows activity, the Status column carries
-   state. Flatlined boards get a dashed flatline so the shape is unmistakable. */
-function spark(b){
-  const W=88,H=26,max=Math.max(...b.series,0.01);
-  if(b.s==="flat"){
-    return `<svg class="spark" viewBox="0 0 ${W} ${H}" aria-hidden="true">
-      <line x1="0" y1="${H-3}" x2="${W}" y2="${H-3}" stroke="var(--line-strong)" stroke-width="1.4" stroke-dasharray="3 4"/>
-    </svg>`;
-  }
-  const d=b.series.map((v,i)=>{
-    const x=(W/(b.series.length-1))*i;
-    const y=H-2-(v/max)*(H-5);
-    return (i?"L":"M")+x.toFixed(1)+","+y.toFixed(1);
-  }).join(" ");
-  return `<svg class="spark" viewBox="0 0 ${W} ${H}" aria-hidden="true"><path d="${d}"/></svg>`;
-}
-
-/* ---------- render ---------- */
-let filter="all", query="", sortKey="top", sortDir=-1;
+/* ---------- ranked list ---------- */
+let sortMode="best", query="";
 
 function render(){
-  const rows = BOARDS
-    .filter(b => filter==="all" || b.s===filter)
-    .filter(b => !query || (b.n+" "+b.c).toLowerCase().includes(query))
-    .sort((a,b)=>{
-      const k = {name:"n",cat:"c",top:"top",clicks:"clicks",cpc:"cpc",last:"last"}[sortKey];
-      let x=a[k], y=b[k];
-      if(x===null) x=Infinity; if(y===null) y=Infinity;
-      if(typeof x==="string") return x.localeCompare(y)*sortDir;
-      return (x-y)*sortDir;
-    });
+  const L = DATA.listings
+    .filter(l=>l.cpc!=null)
+    .filter(l=>!query || (l.n+" "+(l.dn||"")+" "+(l.d||"")).toLowerCase().includes(query))
+    .sort((a,b)=>
+      sortMode==="best"   ? a.cpc-b.cpc :
+      sortMode==="worst"  ? b.cpc-a.cpc :
+      sortMode==="paid"   ? b.paid-a.paid :
+                            b.clicks-a.clicks);
 
-  document.getElementById("rows").innerHTML = rows.length ? rows.map(b=>{
-    const cpcCls = b.cpc!==null && b.cpc > 2 ? "bad" : "";
-    return `<tr>
-      <td class="board">
-        <a href="${esc(b.u)}" target="_blank" rel="noopener nofollow">${esc(b.n)}</a>${b.orig?'<span class="orig">Original</span>':''}
-      </td>
-      <td class="dim">${esc(b.c)}</td>
-      <td class="num">${b.top?money(b.top,b.cur):"—"}</td>
-      <td class="num dim">${b.clicks?b.clicks.toLocaleString("en-US"):"—"}</td>
-      <td class="num cpc ${cpcCls}">${b.cpc===null?"—":"$"+b.cpc.toFixed(2)}</td>
-      <td class="num dim">${ago(b.last)}</td>
-      <td>${spark(b)}</td>
-      <td><span class="status s-${b.s}">${labelOf(b.s)}</span></td>
-    </tr>`;
-  }).join("") : `<tr><td colspan="8" style="padding:30px 10px;color:var(--muted)">
-      No board matches that. Try clearing the filter, or add a board below.</td></tr>`;
+  const out=[];
+  L.forEach((l,i)=>{
+    if(sortMode==="best" && i===3) out.push(`<div class="divider"><i>TOP 3 DEALS</i></div>`);
+    if(sortMode==="best" && i===10) out.push(`<div class="divider"><i>TOP 10</i></div>`);
+    const podium = sortMode==="best" && i<3;
+    out.push(`<div class="row${podium?" podium":""}">
+      <span class="rankchip">#${i+1}</span>
+      <span class="avatar" style="background:${avaColor(l.n)}">${esc(l.n[0].toUpperCase())}</span>
+      <div class="body">
+        <a class="name" href="${esc(l.u||"#")}" target="_blank" rel="noopener nofollow">${esc(l.n)}</a>
+        <p class="desc">${esc(l.d||l.dn||"")}</p>
+        <p class="meta num">board #${l.rank} · paid <b>${money(l.paid)}</b> · <b>${l.clicks.toLocaleString("en-US")}</b> lifetime clicks</p>
+      </div>
+      <div class="cpc num"><b>${cpcFmt(l.cpc)}</b><span>per click</span></div>
+    </div>`);
+  });
+  document.getElementById("rows").innerHTML = out.join("") ||
+    `<p class="noresult">No listing matches that. Clear the filter to see all ${DATA.listings.length}.</p>`;
+}
+
+/* ---------- stats + notes ---------- */
+function drawStats(){
+  document.getElementById("pillText").textContent =
+    `${DATA.boardCount.toLocaleString("en-US")} listings · ${money(DATA.boardTotal)} sitting on the board`;
+  const tail = DATA.boardCount - DATA.count;
+  document.getElementById("tailNote").innerHTML =
+    `<b>Why only ${DATA.count} ranked?</b> outbid.lol publishes lifetime click counts only for its top spenders.
+     The other ${tail.toLocaleString("en-US")} listings on the board can't be deal-ranked — no clicks, no $/click.`;
 }
 
 /* ---------- interactions ---------- */
@@ -452,74 +297,35 @@ document.querySelectorAll(".chip").forEach(c=>{
   c.addEventListener("click",()=>{
     document.querySelectorAll(".chip").forEach(x=>x.setAttribute("aria-pressed","false"));
     c.setAttribute("aria-pressed","true");
-    filter=c.dataset.filter; render();
+    sortMode=c.dataset.sort; render();
   });
 });
 document.getElementById("search").addEventListener("input",e=>{
   query=e.target.value.trim().toLowerCase(); render();
 });
-document.querySelectorAll("th[data-sort]").forEach(th=>{
-  th.addEventListener("click",()=>{
-    const k=th.dataset.sort;
-    sortDir = (k===sortKey) ? -sortDir : 1;
-    sortKey = k;
-    document.querySelectorAll("th[data-sort]").forEach(x=>x.removeAttribute("data-active"));
-    th.setAttribute("data-active","");
-    render();
-  });
-});
-document.getElementById("submitForm").addEventListener("submit",async e=>{
-  e.preventDefault();
-  const form=e.target, note=document.getElementById("formNote"), btn=form.querySelector("button");
-  btn.disabled=true; note.classList.remove("ok");
-  note.textContent="Reading the page…";
-  try{
-    const res=await fetch("/api/submit",{
-      method:"POST",
-      headers:{"content-type":"application/json"},
-      body:JSON.stringify({url:form.url.value.trim(), cat:form.cat.value.trim(), website:form.website.value})
-    });
-    const out=await res.json().catch(()=>({}));
-    if(res.ok){
-      note.textContent=out.message||"Validated and added. It appears on the site within a few minutes.";
-      note.classList.add("ok");
-      form.reset();
-    }else{
-      note.textContent=out.error||"Something went wrong — try again in a minute.";
-    }
-  }catch{
-    note.textContent="Network error — try again in a minute.";
-  }
-  btn.disabled=false;
-});
 
-/* ---------- boot ----------
-   Tries the crawler output first. Falls back to the sample array and keeps the
-   red banner up, so the page can never quietly serve made-up numbers. */
+/* ---------- boot ---------- */
 async function boot(){
   try{
-    const res = await fetch("boards.json", { cache:"no-store" });
+    const res = await fetch("listings.json", { cache:"no-store" });
     if(!res.ok) throw new Error("HTTP " + res.status);
     const data = await res.json();
-    const parsed = (data.boards || []).filter(b => b.ok !== false && b.top != null);
-    if(!parsed.length) throw new Error("no parsed boards in boards.json");
-    BOARDS = parsed;
-    EVENTS = data.events || [];
+    if(!(data.listings||[]).length) throw new Error("no listings");
+    DATA = data;
+    DATA.count = data.count ?? data.listings.length;
     DATA_TS = data.updatedAt;
     SAMPLE = false;
-    document.getElementById("updated").textContent =
-      "Last read " + new Date(data.updatedAt).toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"}) +
-      " · every 5 min";
+    const t = "Last read " + new Date(data.updatedAt).toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"}) + " · every 5 min";
+    document.getElementById("updated").textContent = t.replace("Last read ","");
+    document.getElementById("updatedFoot").textContent = t;
   }catch(err){
     console.warn("[bidpulse] using sample data —", err.message);
-    document.getElementById("updated").textContent = "Sample data · crawler not connected";
+    DATA.count = DATA.listings.length;
+    document.getElementById("updated").textContent = "sample data";
+    document.getElementById("updatedFoot").textContent = "Sample data · crawler not connected";
   }
-
   if(!SAMPLE) document.getElementById("sampleBanner")?.remove();
-  derive();
-  drawStrip();
-  drawECG();
-  render();
+  drawStats(); drawFeed(); drawWorst(); render();
 }
 
 boot();
